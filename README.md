@@ -2,7 +2,7 @@
 
 An MIT-licensed studio for reference-based image generation, protected area edits, YouTube thumbnail brainstorming and video generation.
 
-**Status:** source, self-hosting and standalone macOS builds pass CI. A community Mac download is being prepared. Community builds use Sparkle signatures for updates and are not notarized by Apple. See [SECURITY.md](SECURITY.md) for data boundaries and [RELEASING.md](RELEASING.md) for distribution checks.
+**Status:** [v0.1.0 is available for macOS](https://github.com/orkunisitmak/banana-studio/releases/tag/v0.1.0). Source, self-hosting and standalone builds for Apple silicon and Intel pass CI. Community builds use Sparkle signatures for updates and are not notarized by Apple. See [SECURITY.md](SECURITY.md) for data boundaries and [RELEASING.md](RELEASING.md) for distribution checks.
 
 ## macOS app
 
@@ -31,6 +31,8 @@ open '.build/staging/Banana Studio.app'
 The current packager builds for the host architecture. Development packages use local ad hoc signatures and disable automatic update checks. They must not be published as official downloads.
 
 ### Installing a community download
+
+Download v0.1.0 for [Apple silicon (M1 and newer)](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-arm64.zip) or [Intel](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-x64.zip). Requires macOS 13.5 or later. The [release page](https://github.com/orkunisitmak/banana-studio/releases/tag/v0.1.0) includes signed feeds and verification records for both architectures.
 
 Download the archive for your Mac from this repository's Releases, unzip it and move **Banana Studio.app** into Applications before opening it. Community downloads are not signed with an Apple Developer ID or notarized by Apple. After attempting to open the app, approve **Banana Studio** in **System Settings → Privacy & Security → Open Anyway**. This creates an exception for this app; no global Gatekeeper or SIP change is needed. See [Apple's instructions](https://support.apple.com/102445).
 
