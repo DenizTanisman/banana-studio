@@ -35,12 +35,20 @@ node scripts/package-macos.mjs
 
 Use the next build number, rather than `1`, for subsequent releases. The identity and profile above are names, not private credentials. The script signs nested executables, notarizes, staples, checks Gatekeeper, audits the completed bundle, signs the final archive and signed feed, and writes a verification record under ignored `release-artifacts/<version>/`. It stops on any failed check.
 
+Recheck the completed files without granting access to the signing Keychain:
+
+```sh
+node scripts/verify-macos-release.mjs release-artifacts/0.1.0 arm64
+```
+
+Use the actual version and architecture. This read-only command verifies the signed feed and exact archive against the tracked public key, checks the intended GitHub download URL/version/build/architecture, and compares SHA-256 hashes with `verification-<architecture>.json`. The record includes the source commit. It rejects changed files, missing signatures and mismatched metadata without printing file contents. It does not replace Apple's notarization/Gatekeeper checks or an actual installation/update test.
+
 ## Installation and update gate
 
 Before an official release, test a quarantined download on a clean Mac without development dependencies. Confirm first launch, Keychain save/remove, image generation with the tester's own provider account, reference uploads and local gallery persistence. Keep the app open while AI jobs run; the local worker stops when the app quits. A dispatched OpenAI request interrupted by a quit/crash is retained but never automatically submitted again, because doing so could charge twice.
 
 Test an actual older signed app updating to the newer signed app through Sparkle. Confirm both the new build number and continued access to the same local gallery and Keychain keys after restart. Confirm a modified archive/feed is rejected and no test feed or fixture is included in the final bundle. These installation checks remain required even when the signature test passes.
 
-Publish a GitHub release tagged `v<version>` at the tested source commit. Attach only the notarized archive and its matching signed `appcast-arm64.xml` or `appcast-x64.xml`, plus a reviewed verification record if desired. Do not attach `.env` files, databases, test outputs, signing keys, certificates or local logs. Keep feed assets for every supported architecture on the latest release; the installed app uses the architecture-specific latest-release URL. After publishing, download and verify the actual public assets again, and test the public update path before claiming automatic updates are live.
+Publish a GitHub release tagged `v<version>` at the tested source commit. Attach only the notarized archive and its matching signed `appcast-arm64.xml` or `appcast-x64.xml`, plus the corresponding reviewed `verification-arm64.json` or `verification-x64.json` record. Do not attach `.env` files, databases, test outputs, signing keys, certificates or local logs. Keep feed assets for every supported architecture on the latest release; the installed app uses the architecture-specific latest-release URL. After publishing, download those exact public assets into a version-named directory and run the read-only verifier again. Test the public update path before claiming automatic updates are live.
 
 Follow [Sparkle's publishing guide](https://sparkle-project.org/documentation/publishing/) when changing archive formats, feed structure or signing policy.
