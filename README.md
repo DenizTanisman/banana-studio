@@ -8,11 +8,11 @@ An MIT-licensed studio for reference-based image generation, protected area edit
 
 The app runs its own local workspace. It does not require Supabase, Vercel, a hosted Banana Studio account or a separately installed Node runtime. Provider API keys are entered through **Provider keys** and stored in macOS Keychain. Gallery data stays in `~/Library/Application Support/Banana Studio/`. AI requests still require internet access and a paid account with the chosen provider.
 
-The native shell uses AppKit and WKWebView. It bundles the same React interface, a local Node backend and SQLite storage. Sparkle handles signed application updates; user data and Keychain entries live outside the application bundle.
+The native shell uses AppKit and WKWebView. It bundles the same React interface, a local Node backend and SQLite storage. Sparkle handles signed application updates; user data and Keychain entries live outside the application bundle. Keep the app open while AI jobs run; minimizing its window is fine. See [RELEASING.md](RELEASING.md) for signing, distribution and the update verification gates.
 
 ### Build a development app
 
-Requires macOS 13.5+, Xcode/Swift, Node.js 24 and npm. Use an official Node.js runtime for the target Mac architecture; verify its archive against Node's published checksum before packaging.
+Requires macOS 13.5+, Xcode/Swift, Node.js 24 and npm. The runtime helper downloads the official Node.js runtime for the current Mac architecture and checks the pinned archive, executable and license checksums before packaging.
 
 ```sh
 npm ci --ignore-scripts
@@ -21,7 +21,10 @@ npm run typecheck
 npm run build
 npm run build:desktop
 swift build --package-path desktop/macos -c release
-BANANA_NODE_RUNTIME=/absolute/path/to/verified/node node scripts/package-macos.mjs --development
+node scripts/fetch-node-runtime.mjs
+BANANA_NODE_RUNTIME="$PWD/.build/node-runtime/bin/node" node scripts/package-macos.mjs --development
+node scripts/test-local-generation.mjs '.build/staging/Banana Studio.app'
+node scripts/test-update-signatures.mjs
 open '.build/staging/Banana Studio.app'
 ```
 
