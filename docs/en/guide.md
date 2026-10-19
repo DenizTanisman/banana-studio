@@ -86,9 +86,9 @@ Choose a video model first: supported modes, durations, sizes and inputs differ.
 
 The interface validates inputs and shows mode-specific controls. Some reference-video preprocessing also needs fal.ai. Keep the Mac app open during jobs. The hosted version has a durable queue for OpenAI image jobs; other providers use their task histories and polling. A timeout does not prove that a paid request was never accepted. Check the task/result before submitting it again.
 
-[![A real generated video preview](../assets/video-preview.gif)](https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4)
+[![A real generated video preview](../assets/video-preview.gif)](https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4)
 
-This is an existing MiniMax H3 clip, compressed and muted for documentation. [Open the full 15-second MP4](https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4). In the app player, use the timeline, play/pause, volume and fullscreen controls. It is a historical output, not a new H3 Max test.
+This is an existing MiniMax H3 clip, compressed and muted for documentation. [Download the full 15-second MP4](https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4). In the app player, use the timeline, play/pause, volume and fullscreen controls. It is a historical output, not a new H3 Max test.
 
 ## Organize and reuse
 

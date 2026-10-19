@@ -68,9 +68,9 @@ Use model-specific controls for duration, aspect ratio, quality and inputs. **Se
 
 MiniMax H3 Max modes: **Text to Video Max · Image to Video Max · Reference to Video Max · Extend Video Max · Lip Sync Max · Recast**. Add image, video or audio references where supported, prepare motion instructions with Enhance, follow the job, then play or download the result.
 
-<p align="center"><a href="https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4"><img src="docs/assets/video-preview.gif" width="640" alt="Animated preview of a real generated video: two costumed characters emerge from plush toys inside an arcade claw machine" /></a></p>
+<p align="center"><a href="https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4"><img src="docs/assets/video-preview.gif" width="640" alt="Animated preview of a real generated video: two costumed characters emerge from plush toys inside an arcade claw machine" /></a></p>
 
-<p align="center"><strong><a href="https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4">Open the real 15-second clip (MP4) →</a></strong><br /><sub>A previously generated MiniMax H3 clip from the owner's account. Compressed, silent documentation preview; not a new benchmark of the current Max model.</sub></p>
+<p align="center"><strong><a href="https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4">Download the real 15-second clip (MP4) →</a></strong><br /><sub>A previously generated MiniMax H3 clip from the owner's account. Compressed, silent documentation preview; not a new benchmark of the current Max model.</sub></p>
 
 <details>
 <summary>See the real video player and saved generation details</summary>

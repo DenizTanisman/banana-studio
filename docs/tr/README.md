@@ -66,9 +66,9 @@ Süre, en-boy oranı, kalite ve girdiler için modele uygun kontrolleri kullan. 
 
 MiniMax H3 Max modları: **Text to Video Max · Image to Video Max · Reference to Video Max · Extend Video Max · Lip Sync Max · Recast**. Desteklenen modlarda görsel, video veya ses referansı ekle; Enhance ile hareket talimatını hazırla, işi takip et, sonucu oynat veya indir.
 
-<p align="center"><a href="https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4"><img src="../assets/video-preview.gif" width="640" alt="Gerçek üretilmiş video önizlemesi: kostümlü iki karakter oyuncak makinesindeki peluşların arasından çıkıyor" /></a></p>
+<p align="center"><a href="https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4"><img src="../assets/video-preview.gif" width="640" alt="Gerçek üretilmiş video önizlemesi: kostümlü iki karakter oyuncak makinesindeki peluşların arasından çıkıyor" /></a></p>
 
-<p align="center"><strong><a href="https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4">15 saniyelik gerçek klibi aç (MP4) →</a></strong><br /><sub>Sahibinin hesabından daha önce üretilmiş MiniMax H3 klibi. Küçültülmüş, sessiz dokümantasyon önizlemesi; güncel Max modelinin yeni bir testi değildir.</sub></p>
+<p align="center"><strong><a href="https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4">15 saniyelik gerçek klibi indir (MP4) →</a></strong><br /><sub>Sahibinin hesabından daha önce üretilmiş MiniMax H3 klibi. Küçültülmüş, sessiz dokümantasyon önizlemesi; güncel Max modelinin yeni bir testi değildir.</sub></p>
 
 <details>
 <summary>Gerçek video oynatıcısını ve kayıtlı üretim bilgilerini gör</summary>

@@ -86,9 +86,9 @@ Analiz, süresi bilinen, yayımlanmış ve en fazla 2,5 saatlik videoları kabul
 
 Arayüz girdileri kontrol eder, moda uygun kontrolleri gösterir. Bazı video referanslarının hazırlanması ayrıca fal.ai gerektirir. İşler sürerken Mac uygulamasını açık tut. Webde OpenAI görsel işleri için kalıcı kuyruk vardır; diğer servislerin kendi iş kayıtları ve takip akışları kullanılır. Zaman aşımı, ücretli isteğin hiç kabul edilmediği anlamına gelmez. Yeniden göndermeden önce işi/sonucu kontrol et.
 
-[![Gerçek video üretimi önizlemesi](../assets/video-preview.gif)](https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4)
+[![Gerçek video üretimi önizlemesi](../assets/video-preview.gif)](https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4)
 
-Bu, dokümantasyon için küçültülmüş ve sesi çıkarılmış mevcut bir MiniMax H3 klibidir. [15 saniyelik MP4'ü aç](https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4). Uygulamadaki oynatıcıda zaman çizgisi, oynat/duraklat, ses ve tam ekran kontrolleri bulunur. Geçmiş bir üretimdir; yeni H3 Max testi değildir.
+Bu, dokümantasyon için küçültülmüş ve sesi çıkarılmış mevcut bir MiniMax H3 klibidir. [15 saniyelik MP4'ü indir](https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4). Uygulamadaki oynatıcıda zaman çizgisi, oynat/duraklat, ses ve tam ekran kontrolleri bulunur. Geçmiş bir üretimdir; yeni H3 Max testi değildir.
 
 ## Düzenle ve yeniden kullan
 
