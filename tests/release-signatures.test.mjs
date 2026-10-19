@@ -32,11 +32,11 @@ test('the release CLI fails closed without echoing untrusted record contents or 
 
 test('release verification binds both signatures to one version, architecture, exact archive and intended repository',()=>{
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'banana-release-verify-')),keys=pair();
- const version='0.1.0',build='7',architecture='arm64',archiveName='Banana-Studio-0.1.0-macos-arm64.zip',archivePath=path.join(temporary,archiveName),feedPath=path.join(temporary,'appcast-arm64.xml');
+ const version='0.1.0',build='7',architecture='arm64',sourceCommit='f'.repeat(40),archiveName='Banana-Studio-0.1.0-macos-arm64.zip',archivePath=path.join(temporary,archiveName),feedPath=path.join(temporary,'appcast-arm64.xml');
  const archive=Buffer.from('synthetic archive contents'),signature=sign(null,archive,keys.privateKey).toString('base64');
  const enclosure=`<enclosure url="https://github.com/orkunisitmak/banana-studio/releases/download/v${version}/${archiveName}" length="${archive.length}" type="application/octet-stream" sparkle:edSignature="${signature}"/>`;
- const xml=`<?xml version="1.0"?><rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><item><sparkle:version>${build}</sparkle:version><sparkle:shortVersionString>${version}</sparkle:shortVersionString><sparkle:minimumSystemVersion>13.5.0</sparkle:minimumSystemVersion><sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>${enclosure}</item></channel></rss>\n`;
- const options={archivePath,feedPath,publicKey:keys.public,version,build,architecture};
+ const xml=`<?xml version="1.0"?><rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><item><link>https://github.com/orkunisitmak/banana-studio/commit/${sourceCommit}</link><sparkle:version>${build}</sparkle:version><sparkle:shortVersionString>${version}</sparkle:shortVersionString><sparkle:minimumSystemVersion>13.5.0</sparkle:minimumSystemVersion><sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>${enclosure}</item></channel></rss>\n`;
+ const options={archivePath,feedPath,publicKey:keys.public,version,build,architecture,sourceCommit};
  try {
   fs.writeFileSync(archivePath,archive);fs.writeFileSync(feedPath,signed(xml,keys.privateKey));
   const report=verifyReleaseArtifacts(options);assert.equal(report.signatureVerified,true);assert.match(report.archiveSha256,/^[a-f0-9]{64}$/);assert.equal(report.archive,archiveName);
@@ -45,7 +45,7 @@ test('release verification binds both signatures to one version, architecture, e
   for(const modified of [xml.replace('/orkunisitmak/banana-studio/','/another-owner/another-repo/'),xml.replace(enclosure,enclosure+enclosure),xml.replace('length="'+archive.length+'"','length="1"'),xml.replace('<sparkle:version>7','<sparkle:version>8')]){
    fs.writeFileSync(feedPath,signed(modified,keys.privateKey));assert.throws(()=>verifyReleaseArtifacts(options),/verification failed/);
   }
-  fs.writeFileSync(feedPath,signed(xml,keys.privateKey));assert.throws(()=>verifyReleaseArtifacts({...options,build:'8'}),/verification failed/);
+  fs.writeFileSync(feedPath,signed(xml,keys.privateKey));assert.throws(()=>verifyReleaseArtifacts({...options,build:'8'}),/verification failed/);assert.throws(()=>verifyReleaseArtifacts({...options,sourceCommit:'e'.repeat(40)}),/verification failed/);
   fs.rmSync(archivePath);fs.symlinkSync(feedPath,archivePath);assert.throws(()=>verifyReleaseArtifacts(options),/verification failed/);
  } finally {fs.rmSync(temporary,{recursive:true,force:true});}
 });

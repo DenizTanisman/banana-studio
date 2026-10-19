@@ -23,7 +23,7 @@ const verify=(file,signature)=>{
 };
 const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'banana-update-trust-'));
 try {
- const version='0.1.0',build='1',architecture=process.arch;
+ const version='0.1.0',build='1',architecture=process.arch,sourceCommit='f'.repeat(40);
  const archiveName=`Banana-Studio-${version}-macos-${architecture}.zip`;
  const archive=path.join(temporary,archiveName);
  fs.writeFileSync(archive,Buffer.from('synthetic update bytes; no application or user data'));
@@ -35,11 +35,11 @@ try {
  assert.equal(verify(archive,signature),false,'A changed archive must be rejected.');
  fs.writeFileSync(archive,archiveBytes);
  const feed=path.join(temporary,`appcast-${architecture}.xml`);
- fs.writeFileSync(feed,`<?xml version="1.0" encoding="utf-8"?>\n<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>Synthetic update trust test</title><item><sparkle:version>${build}</sparkle:version><sparkle:shortVersionString>${version}</sparkle:shortVersionString><sparkle:minimumSystemVersion>13.5.0</sparkle:minimumSystemVersion>${architecture==='arm64'?'<sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>':''}<enclosure url="https://github.com/orkunisitmak/banana-studio/releases/download/v${version}/${archiveName}" length="${archiveBytes.length}" type="application/octet-stream" sparkle:edSignature="${signature}" /></item></channel></rss>\n`);
+ fs.writeFileSync(feed,`<?xml version="1.0" encoding="utf-8"?>\n<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>Synthetic update trust test</title><item><link>https://github.com/orkunisitmak/banana-studio/commit/${sourceCommit}</link><sparkle:version>${build}</sparkle:version><sparkle:shortVersionString>${version}</sparkle:shortVersionString><sparkle:minimumSystemVersion>13.5.0</sparkle:minimumSystemVersion>${architecture==='arm64'?'<sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>':''}<enclosure url="https://github.com/orkunisitmak/banana-studio/releases/download/v${version}/${archiveName}" length="${archiveBytes.length}" type="application/octet-stream" sparkle:edSignature="${signature}" /></item></channel></rss>\n`);
  run([feed]);
  assert.ok(verify(feed),'An unchanged signed feed must verify.');
  const publicKey=pair.publicKey.export({format:'der',type:'spki'}).subarray(-32).toString('base64');
- assert.equal(verifyReleaseArtifacts({archivePath:archive,feedPath:feed,publicKey,version,build,architecture}).signatureVerified,true,'The read-only public-key verifier must accept the actual Sparkle tool output.');
+ assert.equal(verifyReleaseArtifacts({archivePath:archive,feedPath:feed,publicKey,version,build,architecture,sourceCommit}).signatureVerified,true,'The read-only public-key verifier must accept the actual Sparkle tool output.');
  fs.writeFileSync(feed,fs.readFileSync(feed,'utf8').replace('Synthetic update trust test','Altered update information'));
  assert.equal(verify(feed),false,'Changed feed content must be rejected.');
  const previous={identity:process.env.BANANA_SIGNING_IDENTITY,profile:process.env.BANANA_NOTARY_PROFILE};

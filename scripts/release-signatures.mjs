@@ -40,12 +40,14 @@ const singleText=(xml,tag)=>{
  if(matches.length!==1)return fail();
  return matches[0][1].trim();
 };
-export function verifyReleaseArtifacts({archivePath,feedPath,publicKey,version,build,architecture,repository='orkunisitmak/banana-studio'}) {
- if(!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version)||!['arm64','x64'].includes(architecture)||!/^\d+$/.test(build)||!Number.isSafeInteger(Number(build))||Number(build)<1||!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))return fail();
+export function verifyReleaseArtifacts({archivePath,feedPath,publicKey,version,build,architecture,sourceCommit,repository='orkunisitmak/banana-studio'}) {
+ if(!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version)||!['arm64','x64'].includes(architecture)||!/^\d+$/.test(build)||!Number.isSafeInteger(Number(build))||Number(build)<1||!/^[a-f0-9]{40}$/.test(sourceCommit)||!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))return fail();
  const archiveName=`Banana-Studio-${version}-macos-${architecture}.zip`,feedName=`appcast-${architecture}.xml`;
  if(path.basename(archivePath)!==archiveName||path.basename(feedPath)!==feedName)return fail();
  const feedBytes=readFile(feedPath,2*1024*1024),xml=verifySignedFeed(feedBytes,publicKey);
  if((xml.match(/<item\b/g)||[]).length!==1||!xml.includes('xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"')||singleText(xml,'sparkle:version')!==build||singleText(xml,'sparkle:shortVersionString')!==version||singleText(xml,'sparkle:minimumSystemVersion')!=='13.5.0')return fail();
+ const item=xml.match(/<item>([\s\S]*?)<\/item>/)?.[1];
+ if(!item||singleText(item,'link')!==`https://github.com/${repository}/commit/${sourceCommit}`)return fail();
  if(architecture==='arm64'&&singleText(xml,'sparkle:hardwareRequirements')!=='arm64')return fail();
  if(architecture==='x64'&&xml.includes('<sparkle:hardwareRequirements'))return fail();
  const enclosures=[...xml.matchAll(/<enclosure\b([^<>]*?)(?:\/>|>\s*<\/enclosure>)/g)];
@@ -58,5 +60,5 @@ export function verifyReleaseArtifacts({archivePath,feedPath,publicKey,version,b
  const archive=readFile(archivePath,512*1024*1024);
  if(Number(attrs.length)!==archive.length)return fail();
  checkSignature(archive,attrs['sparkle:edSignature'],publicKey);
- return {version,build,architecture,archive:archiveName,feed:feedName,archiveSha256:digest(archive),feedSha256:digest(feedBytes),signatureVerified:true};
+ return {version,build,architecture,sourceCommit,archive:archiveName,feed:feedName,archiveSha256:digest(archive),feedSha256:digest(feedBytes),signatureVerified:true};
 }

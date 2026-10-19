@@ -8,7 +8,7 @@ Use a Mac with Xcode, a valid **Developer ID Application** certificate and its p
 
 The Sparkle Ed25519 private key is a separate Keychain entry, under account `banana-studio`. Only its public key is tracked in `desktop/macos/Resources/SparklePublicKey.txt`. Preserve the signing Keychain securely across maintainer Mac changes. Do not regenerate the update key for routine releases. See [Sparkle's key management documentation](https://sparkle-project.org/documentation/#3-seal-your-app-contents-and-secure-your-updates).
 
-Fork maintainers must use their own app bundle identifier, Keychain service, Sparkle key pair and release repository. Update both feed/download URLs in the packaging and signing scripts before distributing a fork. A copy of this repository's public key cannot sign updates.
+Fork maintainers must use their own app bundle identifier, Keychain service, Sparkle key pair and release repository. Update the feed/download URLs in the packaging and signing scripts, and the repository default in `scripts/release-signatures.mjs`, before distributing a fork. A copy of this repository's public key cannot sign updates.
 
 ## Build and verify
 
@@ -41,7 +41,7 @@ Recheck the completed files without granting access to the signing Keychain:
 node scripts/verify-macos-release.mjs release-artifacts/0.1.0 arm64
 ```
 
-Use the actual version and architecture. This read-only command verifies the signed feed and exact archive against the tracked public key, checks the intended GitHub download URL/version/build/architecture, and compares SHA-256 hashes with `verification-<architecture>.json`. The record includes the source commit. It rejects changed files, missing signatures and mismatched metadata without printing file contents. It does not replace Apple's notarization/Gatekeeper checks or an actual installation/update test.
+Use the actual version and architecture. This read-only command verifies the signed feed and exact archive against the tracked public key, checks the intended GitHub download URL/version/build/architecture, and compares SHA-256 hashes with `verification-<architecture>.json`. The signed feed also links to the source commit; changing only the record's commit is rejected. It rejects changed files, missing signatures and mismatched metadata without printing file contents. It does not replace Apple's notarization/Gatekeeper checks or an actual installation/update test.
 
 ## Installation and update gate
 

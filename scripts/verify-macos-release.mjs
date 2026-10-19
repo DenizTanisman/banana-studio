@@ -10,7 +10,7 @@ try {
  const record=JSON.parse(fs.readFileSync(path.join(directory,`verification-${architecture}.json`),'utf8'));
  const fields=['version','build','architecture','notarization','signatureVerified','privacyAuditPassed','archive','sourceCommit','archiveSha256','feedSha256'];
  if(Object.keys(record).length!==fields.length||fields.some(name=>!Object.hasOwn(record,name))||record.architecture!==architecture||record.version!==path.basename(path.resolve(directory))||record.notarization!=='Accepted'||record.signatureVerified!==true||record.privacyAuditPassed!==true||!/^[a-f0-9]{40}$/.test(record.sourceCommit))throw new Error('The release verification record is incomplete or invalid.');
- const report=verifyReleaseArtifacts({archivePath:path.join(directory,`Banana-Studio-${record.version}-macos-${architecture}.zip`),feedPath:path.join(directory,`appcast-${architecture}.xml`),publicKey:fs.readFileSync(path.join(root,'desktop/macos/Resources/SparklePublicKey.txt'),'utf8').trim(),version:record.version,build:record.build,architecture});
+ const report=verifyReleaseArtifacts({archivePath:path.join(directory,`Banana-Studio-${record.version}-macos-${architecture}.zip`),feedPath:path.join(directory,`appcast-${architecture}.xml`),publicKey:fs.readFileSync(path.join(root,'desktop/macos/Resources/SparklePublicKey.txt'),'utf8').trim(),version:record.version,build:record.build,architecture,sourceCommit:record.sourceCommit});
  if(report.archive!==record.archive||report.archiveSha256!==record.archiveSha256||report.feedSha256!==record.feedSha256)throw new Error('The release files do not match their verification record.');
  console.log(JSON.stringify({...report,sourceCommit:record.sourceCommit},null,2));
 } catch(error) {
