@@ -1,54 +1,77 @@
 # macOS release procedure
 
-No official signed macOS release is currently available. Passing development tests does not authorize publishing an ad hoc signed app as an official download.
+Banana Studio supports community releases without Apple notarization, as well as optional Developer ID signed and notarized releases. Development builds disable updates and remain for local testing only. Community releases keep Sparkle's signed-feed and archive verification enabled.
 
 ## Maintainer setup
 
-Use a Mac with Xcode, a valid **Developer ID Application** certificate and its private key in Keychain, and a notarization profile stored with `xcrun notarytool store-credentials`. Enter Apple credentials interactively; never put them in a shell history, repository, issue, chat, app bundle or CI log. Apple Developer membership and notarization setup are separate from provider API keys.
+The Sparkle Ed25519 private key is a Keychain entry under account `banana-studio`. Only its public key is tracked in `desktop/macos/Resources/SparklePublicKey.txt`. Keep this key secure and backed up outside the repository. Do not regenerate it for routine releases. Without Apple Developer ID, losing this key requires a new manual download rather than an automatic signing-key rotation. See [Sparkle's key management documentation](https://sparkle-project.org/documentation/).
 
-The Sparkle Ed25519 private key is a separate Keychain entry, under account `banana-studio`. Only its public key is tracked in `desktop/macos/Resources/SparklePublicKey.txt`. Preserve the signing Keychain securely across maintainer Mac changes. Do not regenerate the update key for routine releases. See [Sparkle's key management documentation](https://sparkle-project.org/documentation/#3-seal-your-app-contents-and-secure-your-updates).
+Community releases need no Apple Developer membership, Developer ID certificate or notarization profile. macOS may ask the maintainer to allow the pinned Sparkle signing tool to use the update key in Keychain. This grants signing access to the update key, not to provider API keys.
 
-Fork maintainers must use their own app bundle identifier, Keychain service, Sparkle key pair and release repository. Update the feed/download URLs in the packaging and signing scripts, and the repository default in `scripts/release-signatures.mjs`, before distributing a fork. A copy of this repository's public key cannot sign updates.
+Fork maintainers must use their own bundle identifier, Keychain service, Sparkle key pair and release repository. Update the feed/download URLs in the packaging/signing scripts and the repository default in `scripts/release-signatures.mjs`. A copy of this repository's public key cannot sign updates.
 
 ## Build and verify
 
-Build from a clean committed revision. Increment `package.json` version and choose a positive `BANANA_BUILD_NUMBER` greater than every previously released build. Build separately on each supported Mac architecture; the packager rejects a Node runtime for a different architecture.
+Build from a clean committed revision. Increment the package version and choose a positive `BANANA_BUILD_NUMBER` greater than previous releases. Build separately on each supported Mac architecture. The packager rejects a runtime for the wrong architecture and records its source commit in the app.
 
-Run the source tests, TypeScript checks, web and local backend builds, Swift tests, isolated fresh-database tests, source/history audit and an independent Git history secret scan as documented in the README and CI workflow. Build a development app first, then run:
+Run the tests, type checks, web/backend builds, Swift tests, isolated database tests and source/history/independent secret scans listed in README and CI. First package a development app and run:
 
 ```sh
 node scripts/test-local-generation.mjs '.build/staging/Banana Studio.app'
 node scripts/test-update-signatures.mjs
 ```
 
-The first command uses synthetic images and a mocked provider to exercise the packaged backend, local queue, SQLite gallery and native raster codec. It proves that protected edits preserve source pixels outside the selection and reference-only generations keep the entire new canvas. It does not call a paid provider. The second command uses an ephemeral in-memory test key to verify signatures and reject modified archives/feeds. It never reads the maintainer's Keychain, publishes anything or proves installation works. Official packaging separately requires that the maintainer's Keychain signing key matches the app's tracked public key.
+These use synthetic images and an ephemeral in-memory update key. They call no paid AI provider, never read the maintainer's signing key and prove neither Apple's approval nor a real update installation. The generation test checks the packaged local queue, SQLite gallery and native codec, including exact source pixels outside an edit mask. The signature test checks the pinned Sparkle tools, an independent public-key verifier, tamper rejection and rejection of development builds as releases.
 
-After all checks pass, package the official build with the verified, unmodified official Node runtime for the current architecture:
+Download and verify the pinned official Node runtime, then package a community release:
 
 ```sh
-BANANA_NODE_RUNTIME=/absolute/path/to/verified/node \
-BANANA_BUILD_NUMBER=1 \
-BANANA_SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
-BANANA_NOTARY_PROFILE='your-keychain-profile' \
-node scripts/package-macos.mjs
+node scripts/fetch-node-runtime.mjs
+BANANA_NODE_RUNTIME="$PWD/.build/node-runtime/bin/node" \
+BANANA_BUILD_NUMBER=2 \
+node scripts/package-macos.mjs --community
 ```
 
-Use the next build number, rather than `1`, for subsequent releases. The identity and profile above are names, not private credentials. The script signs nested executables, notarizes, staples, checks Gatekeeper, audits the completed bundle, signs the final archive and signed feed, and writes a verification record under ignored `release-artifacts/<version>/`. It stops on any failed check.
+Use the next build number for future releases. This signs the executables locally, verifies the app bundle, audits every bundled file, signs the update archive/feed with the Keychain key and writes architecture-specific verification records under ignored `release-artifacts/<version>/`. No Apple validation is requested. The scripts stop on failed checks.
 
-Recheck the completed files without granting access to the signing Keychain:
+CI can prepare a community app without any private signing material:
+
+```sh
+BANANA_NODE_RUNTIME="$PWD/.build/node-runtime/bin/node" \
+BANANA_BUILD_NUMBER=2 \
+node scripts/package-macos.mjs --community --prepare
+```
+
+A prepared app is not ready to publish: it still lacks signed update artifacts. On the maintainer's Mac, finish using the same clean source commit:
+
+```sh
+node scripts/sign-macos-release.mjs '/absolute/path/to/Banana Studio.app' --community
+```
+
+The final signer reads the app's architecture, so a CI-built Intel app can also be signed on an Apple silicon maintainer Mac. The app's source commit must match the checkout. Do not alter the bundle after final signing.
+
+Recheck completed artifacts without Keychain access:
 
 ```sh
 node scripts/verify-macos-release.mjs release-artifacts/0.1.0 arm64
 ```
 
-Use the actual version and architecture. This read-only command verifies the signed feed and exact archive against the tracked public key, checks the intended GitHub download URL/version/build/architecture, and compares SHA-256 hashes with `verification-<architecture>.json`. The signed feed also links to the source commit; changing only the record's commit is rejected. It rejects changed files, missing signatures and mismatched metadata without printing file contents. It does not replace Apple's notarization/Gatekeeper checks or an actual installation/update test.
+Use the actual version and architecture. This verifies signatures, exact download URL/version/build/architecture/source-commit link and SHA-256 hashes in `verification-<architecture>.json`. Community records must say `distribution: community` and `notarization: NotRequested`. The command is read-only and does not replace actual installation/update tests.
 
 ## Installation and update gate
 
-Before an official release, test a quarantined download on a clean Mac without development dependencies. Confirm first launch, Keychain save/remove, image generation with the tester's own provider account, reference uploads and local gallery persistence. Keep the app open while AI jobs run; the local worker stops when the app quits. A dispatched OpenAI request interrupted by a quit/crash is retained but never automatically submitted again, because doing so could charge twice.
+Test a downloaded community archive through macOS's app-specific **Open Anyway** flow. Move the app to Applications before launching. Never instruct users to disable Gatekeeper or SIP. See [Apple's instructions](https://support.apple.com/102445). Developer ID and notarized builds can use the usual approved-app path instead.
 
-Test an actual older signed app updating to the newer signed app through Sparkle. Confirm both the new build number and continued access to the same local gallery and Keychain keys after restart. Confirm a modified archive/feed is rejected and no test feed or fixture is included in the final bundle. These installation checks remain required even when the signature test passes.
+Verify first launch, Keychain save/remove, reference uploads and the local gallery with a tester's own provider account. Keep the app open during jobs; minimizing is fine. A dispatched OpenAI request interrupted by a quit/crash is retained but never automatically submitted again because it could charge twice.
 
-Publish a GitHub release tagged `v<version>` at the tested source commit. Attach only the notarized archive and its matching signed `appcast-arm64.xml` or `appcast-x64.xml`, plus the corresponding reviewed `verification-arm64.json` or `verification-x64.json` record. Do not attach `.env` files, databases, test outputs, signing keys, certificates or local logs. Keep feed assets for every supported architecture on the latest release; the installed app uses the architecture-specific latest-release URL. After publishing, download those exact public assets into a version-named directory and run the read-only verifier again. Test the public update path before claiming automatic updates are live.
+Run an actual older-to-newer Sparkle update. Confirm the new build launches and the same local gallery and saved Keychain entries remain accessible. macOS may require renewed Keychain access for an ad hoc signed version. Check modified archives/feeds are rejected. Do not publish test feeds, profile data, signing keys or fixtures.
 
-Follow [Sparkle's publishing guide](https://sparkle-project.org/documentation/publishing/) when changing archive formats, feed structure or signing policy.
+## Publish
+
+Create a GitHub release `v<version>` at the tested source commit. Label community releases clearly as **not notarized by Apple**. Attach only the tested archive, matching signed `appcast-arm64.xml` / `appcast-x64.xml` and corresponding reviewed verification records. Do not upload environment files, databases, user media, test outputs, certificates, signing keys or local logs. Keep assets for every supported architecture on the latest release. Download the actual public assets into a version-named directory and rerun verification, then verify the public update path.
+
+## Optional Apple-notarized release
+
+For the notarized path, install a valid Developer ID Application certificate and private key in Keychain and store a notarization profile with `xcrun notarytool store-credentials`. Enter Apple credentials interactively, never in source, shell history or chat. Run packaging without `--community`, setting `BANANA_SIGNING_IDENTITY` and `BANANA_NOTARY_PROFILE` to their non-secret names. This path also notarizes, staples and checks Gatekeeper; its record must say `distribution: notarized` and `notarization: Accepted`.
+
+Follow [Sparkle's publishing guide](https://sparkle-project.org/documentation/publishing/) when changing feed structure or signing policy.

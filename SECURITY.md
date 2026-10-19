@@ -16,6 +16,8 @@ Local files are not database-encrypted; protect your Mac account and backups wit
 
 ## Releases
 
-Release artifacts must pass source, history, bundle and independent secret scans. Apple Developer ID signing, notarization and stapling are required for official macOS releases. Sparkle archives and the feed are signed using the separate Ed25519 key stored in the maintainer's Keychain. Private signing material must never be committed, included in an app, or printed in CI logs.
+Release artifacts must pass source, history, bundle and independent secret scans. Community releases deliberately use local ad hoc code signatures and do not provide Apple Developer ID signing or notarization. Users approve the app through macOS Privacy & Security on first launch. The application does not disable Gatekeeper, SIP or system-wide protections. The optional notarized distribution path still requires Developer ID, notarization and stapling.
+
+Both distribution paths require Sparkle archives and the feed to be signed using the separate Ed25519 key stored in the maintainer's Keychain. Unsigned or changed update payloads must be rejected before extraction. Private signing material must never be committed, included in an app, or printed in CI logs. Apple notarization is not claimed for community builds; the verification record explicitly says `NotRequested`.
 
 Development builds are for local testing and are not official distribution artifacts. A successful build does not prove a release has been signed, published or tested through the update flow.

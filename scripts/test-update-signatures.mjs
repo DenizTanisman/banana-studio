@@ -45,7 +45,9 @@ try {
  const previous={identity:process.env.BANANA_SIGNING_IDENTITY,profile:process.env.BANANA_NOTARY_PROFILE};
  try {
   process.env.BANANA_SIGNING_IDENTITY='synthetic-identity';process.env.BANANA_NOTARY_PROFILE='synthetic-profile';
-  assert.throws(()=>signMacRelease(path.join(root,'.build/staging/Banana Studio.app')),/development app cannot be published/,'An ad hoc development app must never pass the official release gate.');
+  const developmentApp=path.join(temporary,'Development.app');fs.mkdirSync(path.join(developmentApp,'Contents'),{recursive:true});
+  fs.writeFileSync(path.join(developmentApp,'Contents/Info.plist'),'<?xml version="1.0"?><plist version="1.0"><dict><key>BananaDevelopmentBuild</key><true/></dict></plist>');
+  for(const community of [false,true])assert.throws(()=>signMacRelease(developmentApp,{community}),/development app cannot be published/,'A development app must never pass either release gate.');
  } finally {
   for(const [name,value] of [['BANANA_SIGNING_IDENTITY',previous.identity],['BANANA_NOTARY_PROFILE',previous.profile]]){if(value===undefined)delete process.env[name];else process.env[name]=value;}
  }

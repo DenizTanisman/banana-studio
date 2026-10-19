@@ -2,7 +2,7 @@
 
 An MIT-licensed studio for reference-based image generation, protected area edits, YouTube thumbnail brainstorming and video generation.
 
-**Status:** the standalone macOS app and clean self-hosting setup are under verification. No official Mac release has been published yet. See [SECURITY.md](SECURITY.md) for data boundaries and release requirements.
+**Status:** source, self-hosting and standalone macOS builds pass CI. A community Mac download is being prepared. Community builds use Sparkle signatures for updates and are not notarized by Apple. See [SECURITY.md](SECURITY.md) for data boundaries and [RELEASING.md](RELEASING.md) for distribution checks.
 
 ## macOS app
 
@@ -29,6 +29,12 @@ open '.build/staging/Banana Studio.app'
 ```
 
 The current packager builds for the host architecture. Development packages use local ad hoc signatures and disable automatic update checks. They must not be published as official downloads.
+
+### Installing a community download
+
+Download the archive for your Mac from this repository's Releases, unzip it and move **Banana Studio.app** into Applications before opening it. Community downloads are not signed with an Apple Developer ID or notarized by Apple. After attempting to open the app, approve **Banana Studio** in **System Settings → Privacy & Security → Open Anyway**. This creates an exception for this app; no global Gatekeeper or SIP change is needed. See [Apple's instructions](https://support.apple.com/102445).
+
+Sparkle checks signed update feeds and verifies update archives against the public key bundled in the app. Apple notarization and Sparkle update signatures are separate. macOS may also request permission to access your saved Keychain entries after a new community build is installed.
 
 ## Self-hosting
 

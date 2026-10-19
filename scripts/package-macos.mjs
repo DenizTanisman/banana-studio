@@ -5,6 +5,9 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 const root=path.resolve(import.meta.dirname,'..');
 const development=process.argv.includes('--development');
+const community=process.argv.includes('--community');
+const prepare=process.argv.includes('--prepare');
+if((development&&community)||(prepare&&!community))throw new Error('Choose --development, --community, or the notarized default. --prepare is only supported with --community.');
 const runtime=process.env.BANANA_NODE_RUNTIME;
 if(!runtime||!fs.existsSync(runtime))throw new Error('Set BANANA_NODE_RUNTIME to a verified official Node.js 24 runtime for the target architecture.');
 const runtimeLock=JSON.parse(fs.readFileSync(path.join(root,'desktop/node-runtime.json')));
@@ -15,7 +18,9 @@ if(process.platform!=='darwin'||!verified||digest(runtime)!==verified.binarySha2
 const version=JSON.parse(fs.readFileSync(path.join(root,'package.json'))).version;
 if(!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version))throw new Error('Use a semantic application version.');
 const build=process.env.BANANA_BUILD_NUMBER||(development?'1':'');if(!/^\d+$/.test(build)||!Number.isSafeInteger(Number(build))||Number(build)<1)throw new Error('Use a monotonically increasing positive numeric build number.');
-if(!development&&(!process.env.BANANA_SIGNING_IDENTITY||!process.env.BANANA_NOTARY_PROFILE))throw new Error('Release packaging requires Developer ID and notarization credentials. Use --development only for local testing.');
+if(!development&&!community&&(!process.env.BANANA_SIGNING_IDENTITY||!process.env.BANANA_NOTARY_PROFILE))throw new Error('Notarized packaging requires Developer ID and notarization credentials. Choose --community for a release that users approve in macOS Privacy & Security.');
+const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+const distribution=development?'development':community?'community':'notarized';
 const staging=path.join(root,'.build/staging');const app=path.join(staging,'Banana Studio.app'),contents=path.join(app,'Contents'),resources=path.join(contents,'Resources');
 fs.rmSync(app,{recursive:true,force:true});fs.mkdirSync(path.join(contents,'MacOS'),{recursive:true});fs.mkdirSync(path.join(contents,'Frameworks'),{recursive:true});fs.mkdirSync(path.join(resources,'runtime'),{recursive:true});fs.mkdirSync(path.join(resources,'workspace'),{recursive:true});
 const swiftOutput=execFileSync('swift',['build','--package-path',path.join(root,'desktop/macos'),'-c','release','--show-bin-path'],{encoding:'utf8'}).trim();
@@ -48,6 +53,9 @@ fs.writeFileSync(path.join(contents,'Info.plist'),`<?xml version="1.0" encoding=
 <key>SUEnableAutomaticChecks</key><${development?'false':'true'}/><key>SUAutomaticallyUpdate</key><true/>
 <key>SUVerifyUpdateBeforeExtraction</key><true/><key>SURequireSignedFeed</key><true/>
 <key>BananaDevelopmentBuild</key><${development?'true':'false'}/>
+<key>BananaDistribution</key><string>${distribution}</string>
+<key>BananaArchitecture</key><string>${process.arch}</string>
+<key>BananaSourceCommit</key><string>${sourceCommit}</string>
 <key>NSHumanReadableCopyright</key><string>Copyright 2026 Banana Studio contributors. MIT License.</string>
 </dict></plist>\n`);
 execFileSync(process.execPath,[path.join(root,'scripts/third-party-notices.mjs')],{stdio:'inherit'});
@@ -55,5 +63,5 @@ fs.copyFileSync(path.join(root,'LICENSE'),path.join(resources,'LICENSE'));
 fs.copyFileSync(path.join(root,'THIRD_PARTY_NOTICES.md'),path.join(resources,'THIRD_PARTY_NOTICES.md'));
 fs.copyFileSync(nodeLicense,path.join(resources,'Node-LICENSE.txt'));
 if(development){execFileSync('/usr/bin/codesign',['--force','--options','runtime','--sign','-','--entitlements',path.join(root,'desktop/macos/Resources/Node.entitlements'),path.join(resources,'runtime/node')],{stdio:'inherit'});execFileSync('/usr/bin/codesign',['--force','--deep','--sign','-',app],{stdio:'inherit'});}
-else { console.log(JSON.stringify(signMacRelease(app),null,2)); }
-console.log(JSON.stringify({app,development,version,build,runtimePackages:[...copied]},null,2));
+else { console.log(JSON.stringify(signMacRelease(app,{community,prepare}),null,2)); }
+console.log(JSON.stringify({app,development,distribution,architecture:process.arch,sourceCommit,version,build,runtimePackages:[...copied]},null,2));
