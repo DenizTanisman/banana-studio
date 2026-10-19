@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, createUserScopedClient, requireUser } from './_lib/auth.js';
-import { OPENAI_TEXT_MODEL, calculateOpenAITextCost, DEFAULT_OPENAI_REASONING, isOpenAIReasoningEffort } from '../openaiText.js';
-import { createTaskDeadline, waitForTask } from '../asyncTask.js';
+import { OPENAI_TEXT_MODEL, calculateOpenAITextCost, DEFAULT_OPENAI_REASONING, isOpenAIReasoningEffort } from '../src/lib/prompts/openaiText.js';
+import { createTaskDeadline, waitForTask } from '../src/lib/shared/asyncTask.js';
 import { startOpenAIRequest, openAIErrorMessage } from './_lib/openaiGuard.js';
 import { buildBrainstormOutputFormat, brainstormOutputInstruction, isBrainstormCount, YOUTUBE_ANALYSIS_FORMAT, normalizeBrainstormOutput } from './_lib/textOutputFormats.js';
 

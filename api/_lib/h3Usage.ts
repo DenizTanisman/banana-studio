@@ -1,7 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import type { GenerationConfig } from '../../types.js';
-import { H3_MAX_ENDPOINTS, normalizeH3MaxMode, type H3MaxMode } from '../../h3Max.js';
-import { estimateH3MaxCost } from '../../h3MaxPricing.js';
+import type { GenerationConfig } from '../../src/types.js';
+import { H3_MAX_ENDPOINTS, normalizeH3MaxMode, type H3MaxMode } from '../../src/lib/video/h3Max.js';
+import { estimateH3MaxCost } from '../../src/lib/video/h3MaxPricing.js';
 import { fetchFalRequestCosts } from './falBillingCosts.js';
 
 const DAY = 86_400_000;

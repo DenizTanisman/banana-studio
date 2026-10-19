@@ -17,7 +17,7 @@ for(const source of sources){
 const sections=['# Third-party notices\n\nBanana Studio source is MIT licensed. Bundled dependencies retain their own licenses. This inventory is generated from modules actually included in the web and macOS builds, rather than unbundled development or server packages.\n'];
 for(const [name,pkg] of [...packages].sort(([a],[b])=>a.localeCompare(b))){
  const names=fs.readdirSync(pkg.directory).filter(file=>/^(?:licen[cs]e|copying|notice)(?:[._-]|$)/i.test(file)&&fs.statSync(path.join(pkg.directory,file)).isFile());
- const supplemental=path.join(root,'third_party_licenses',pkg.name.replaceAll('/','-')+'-'+pkg.version+'-LICENSE.txt');
+ const supplemental=path.join(root,'docs/third-party-licenses',pkg.name.replaceAll('/','-')+'-'+pkg.version+'-LICENSE.txt');
  sections.push(`## ${name}\n\nDeclared license: ${typeof pkg.license==='string'?pkg.license:'See upstream license'}\n`);
  if(names.length){for(const file of names)sections.push(fs.readFileSync(path.join(pkg.directory,file),'utf8').trim()+'\n');}
  else if(fs.existsSync(supplemental))sections.push(fs.readFileSync(supplemental,'utf8'));
@@ -32,5 +32,5 @@ const sparkle=path.join(root,'desktop/macos/.build/checkouts/Sparkle/LICENSE');
 if(!fs.existsSync(sparkle))throw new Error('Resolve the pinned Sparkle package before generating distribution notices.');
 sections.push('## Sparkle 2.10.0\n\n'+fs.readFileSync(sparkle,'utf8'));
 sections.push('## Node.js\n\nThe macOS app bundles an official Node.js runtime. Its complete LICENSE file, including bundled library notices, is included as Node-LICENSE.txt in the app resources.\n');
-fs.writeFileSync(path.join(root,'THIRD_PARTY_NOTICES.md'),sections.join('\n'));
+fs.writeFileSync(path.join(root,'docs/THIRD_PARTY_NOTICES.md'),sections.join('\n'));
 console.log(`Recorded license text for ${packages.size} bundled JavaScript packages and Sparkle.`);

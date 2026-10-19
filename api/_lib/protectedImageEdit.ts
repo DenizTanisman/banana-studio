@@ -1,7 +1,7 @@
 import { decodeRaster as decode, encodeRasterPNG } from './rasterCodec.js';
-import { editRegionPixels, type ImageEditRegion } from '../../imageEditRegion.js';
+import { editRegionPixels, type ImageEditRegion } from '../../src/lib/images/imageEditRegion.js';
 import { imageSha256 } from './imageStorage.js';
-import { compositeEditPixels } from '../../imageEditPixels.js';
+import { compositeEditPixels } from '../../src/lib/images/imageEditPixels.js';
 
 const MAX_BYTES = 50 * 1024 * 1024;
 

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { waitForTask } from '../../asyncTask.js';
+import { waitForTask } from '../../src/lib/shared/asyncTask.js';
 import { getCloudWorkspaceConfig } from './workspaceConfig.js';
 
 // Token verification and caller-scoped queries need only the public key. Keep

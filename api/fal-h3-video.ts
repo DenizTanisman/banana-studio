@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, requireUser } from './_lib/auth.js';
 import { prepareTaskRegistry, registerProviderTask, requireProviderTask } from './_lib/providerTasks.js';
-import { buildH3MaxInput, H3_MAX_ENDPOINTS } from '../h3Max.js';
+import { buildH3MaxInput, H3_MAX_ENDPOINTS } from '../src/lib/video/h3Max.js';
 import { fetchFalRequestCosts } from './_lib/falBillingCosts.js';
 import { recordH3Usage } from './_lib/h3Usage.js';
-import { estimateH3MaxCost } from '../h3MaxPricing.js';
-import type { GenerationConfig } from '../types.js';
+import { estimateH3MaxCost } from '../src/lib/video/h3MaxPricing.js';
+import type { GenerationConfig } from '../src/types.js';
 
 const FAL_QUEUE_BASE = 'https://queue.fal.run';
 const LEGACY_H3_QUEUE_APP = 'minimax/h3';

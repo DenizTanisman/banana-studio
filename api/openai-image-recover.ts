@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, createUserScopedClient, requireUser } from './_lib/auth.js';
-import { SUNBURST_MODEL } from '../openaiImage.js';
+import { SUNBURST_MODEL } from '../src/lib/images/openaiImage.js';
 import { readStoredImage, signedMediaUrl } from './_lib/imageStorage.js';
 
 export const config = { maxDuration: 60 };

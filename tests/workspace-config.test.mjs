@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateCloudPublicConfig } from '../publicConfig.ts';
-import { assertPublicEnvironment } from '../buildSecurity.ts';
+import { validateCloudPublicConfig } from '../src/lib/config/publicConfig.ts';
+import { assertPublicEnvironment } from '../scripts/buildSecurity.ts';
 const publicKey='sb_'+'publishable_'+'example'.repeat(4);
 const config=(extra={})=>({mode:'cloud',supabaseUrl:'https://example.invalid',supabasePublishableKey:publicKey,...extra});
 test('public configuration allowlists fields and rejects private credentials',()=>{

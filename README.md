@@ -2,13 +2,13 @@
 
 An MIT-licensed studio for reference-based image generation, protected area edits, YouTube thumbnail brainstorming and video generation.
 
-**Status:** [v0.1.0 is available for macOS](https://github.com/orkunisitmak/banana-studio/releases/tag/v0.1.0). Source, self-hosting and standalone builds for Apple silicon and Intel pass CI. Community builds use Sparkle signatures for updates and are not notarized by Apple. See [SECURITY.md](SECURITY.md) for data boundaries and [RELEASING.md](RELEASING.md) for distribution checks.
+**Status:** [v0.1.0 is available for macOS](https://github.com/orkunisitmak/banana-studio/releases/tag/v0.1.0). Source, self-hosting and standalone builds for Apple silicon and Intel pass CI. Community builds use Sparkle signatures for updates and are not notarized by Apple. See [SECURITY.md](SECURITY.md) for data boundaries and [RELEASING.md](docs/RELEASING.md) for distribution checks.
 
 ## macOS app
 
 The app runs its own local workspace. It does not require Supabase, Vercel, a hosted Banana Studio account or a separately installed Node runtime. Provider API keys are entered through **Provider keys** and stored in macOS Keychain. Gallery data stays in `~/Library/Application Support/Banana Studio/`. AI requests still require internet access and a paid account with the chosen provider.
 
-The native shell uses AppKit and WKWebView. It bundles the same React interface, a local Node backend and SQLite storage. Sparkle handles signed application updates; user data and Keychain entries live outside the application bundle. Keep the app open while AI jobs run; minimizing its window is fine. See [RELEASING.md](RELEASING.md) for signing, distribution and the update verification gates.
+The native shell uses AppKit and WKWebView. It bundles the same React interface, a local Node backend and SQLite storage. Sparkle handles signed application updates; user data and Keychain entries live outside the application bundle. Keep the app open while AI jobs run; minimizing its window is fine. See [RELEASING.md](docs/RELEASING.md) for signing, distribution and the update verification gates.
 
 ### Build a development app
 
@@ -66,6 +66,20 @@ node scripts/audit-public-release.mjs --history
 ```
 
 The database test creates an isolated, temporary PostgreSQL cluster and uses synthetic accounts. It never connects to a configured workspace. The release audit examines source and reachable Git history, including deleted secrets and accidentally tracked build products. It reports finding locations without printing credentials. An independent secret scanner and manual artifact review are also required before publication.
+
+## Repository layout
+
+| Directory | Contents |
+| --- | --- |
+| `src/` | React entry points and shared types |
+| `src/components/` | Interface components and their hooks |
+| `src/services/` | Browser services and provider clients |
+| `src/lib/` | Modules grouped by images, video, gallery, prompts, references and other features |
+| `api/` | Hosted API routes and server helpers |
+| `desktop/` | Standalone local server and native macOS app |
+| `supabase/` | Fresh-install schema and database checks |
+| `scripts/`, `tests/` | Build, release, privacy audits and automated checks |
+| `docs/` | Release procedure, dependency notices and license provenance |
 
 ## License
 

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readImageDimensions } from './imageDimensions.js';
-import { signMediaUrl } from '../../mediaAccess.js';
+import { signMediaUrl } from '../../src/lib/references/mediaAccess.js';
 
 type StorageError = { message?: string; status?: number | string; statusCode?: number | string };
 

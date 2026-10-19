@@ -20,11 +20,12 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["api"]
+  "include": ["src", "desktop/shared/**/*.ts", "vite.config.ts", "scripts/buildSecurity.ts"],
+  "exclude": ["api", "node_modules", "dist", ".build", "desktop/macos/.build"]
 }

@@ -60,7 +60,7 @@ fs.writeFileSync(path.join(contents,'Info.plist'),`<?xml version="1.0" encoding=
 </dict></plist>\n`);
 execFileSync(process.execPath,[path.join(root,'scripts/third-party-notices.mjs')],{stdio:'inherit'});
 fs.copyFileSync(path.join(root,'LICENSE'),path.join(resources,'LICENSE'));
-fs.copyFileSync(path.join(root,'THIRD_PARTY_NOTICES.md'),path.join(resources,'THIRD_PARTY_NOTICES.md'));
+fs.copyFileSync(path.join(root,'docs/THIRD_PARTY_NOTICES.md'),path.join(resources,'THIRD_PARTY_NOTICES.md'));
 fs.copyFileSync(nodeLicense,path.join(resources,'Node-LICENSE.txt'));
 if(development){execFileSync('/usr/bin/codesign',['--force','--options','runtime','--sign','-','--entitlements',path.join(root,'desktop/macos/Resources/Node.entitlements'),path.join(resources,'runtime/node')],{stdio:'inherit'});execFileSync('/usr/bin/codesign',['--force','--deep','--sign','-',app],{stdio:'inherit'});}
 else { console.log(JSON.stringify(signMacRelease(app,{community,prepare}),null,2)); }

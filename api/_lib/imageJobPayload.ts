@@ -1,13 +1,13 @@
 import { isSecureReferenceUrl } from './providerMedia.js';
-import type { ReferenceImage } from '../../types.js';
-import { getPersonId, cleanPersonName } from '../../personReferences.js';
-import { getOpenAIImageOptions, getOpenAIImageSize, validateOpenAIImageOptions, validateOpenAIImageSize, SUNBURST_MODEL } from '../../openaiImage.js';
-import { prepareSunburstGeneration } from '../../imagePrompting.js';
-import { copyEditRegion, isValidEditRegion } from '../../imageEditRegion.js';
-import { normalizePromptPreparation } from '../../promptPreparation.js';
-import { normalizeYouTubeSource } from '../../youtubeSource.js';
+import type { ReferenceImage } from '../../src/types.js';
+import { getPersonId, cleanPersonName } from '../../src/lib/references/personReferences.js';
+import { getOpenAIImageOptions, getOpenAIImageSize, validateOpenAIImageOptions, validateOpenAIImageSize, SUNBURST_MODEL } from '../../src/lib/images/openaiImage.js';
+import { prepareSunburstGeneration } from '../../src/lib/images/imagePrompting.js';
+import { copyEditRegion, isValidEditRegion } from '../../src/lib/images/imageEditRegion.js';
+import { normalizePromptPreparation } from '../../src/lib/prompts/promptPreparation.js';
+import { normalizeYouTubeSource } from '../../src/lib/youtube/youtubeSource.js';
 import { canonicalMediaUrl, signedMediaUrl } from './imageStorage.js';
-import { MediaAccessError } from '../../mediaAccess.js';
+import { MediaAccessError } from '../../src/lib/references/mediaAccess.js';
 
 export class ImageJobInputError extends Error {}
 const invalid = (message: string): never => { throw new ImageJobInputError(message); };
