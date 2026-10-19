@@ -1,6 +1,6 @@
 # Develop Banana Studio
 
-[Home](../../README.md#english) · [Türkçe](../tr/development.md) · [Web deployment](deploy.md) · [Release procedure](../RELEASING.md)
+[Home](../../README.md) · [Türkçe](../tr/development.md) · [Web deployment](deploy.md) · [Release procedure](../RELEASING.md)
 
 Banana Studio has one React interface and two workspace backends. The standalone Mac app replaces hosted authentication, database, storage and queue adapters with local implementations; it does not embed a configured Supabase project. This repository starts an independent installation and contains no production database or private history.
 

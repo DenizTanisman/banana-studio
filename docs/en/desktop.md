@@ -1,6 +1,6 @@
 # Install and use Banana Studio
 
-[Home](../../README.md#english) · [Türkçe](../tr/desktop.md) · [User guide](guide.md) · [Keys](models.md)
+[Home](../../README.md) · [Türkçe](../tr/desktop.md) · [User guide](guide.md) · [Keys](models.md)
 
 ## Mac: download and open
 

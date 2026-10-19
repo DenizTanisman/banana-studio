@@ -1,6 +1,6 @@
 # Modeller, sağlayıcılar ve API anahtarları
 
-[Ana sayfa](../../README.md#türkçe) · [English](../en/models.md) · [Mac kurulumu](desktop.md) · [Web kurulumu](deploy.md)
+[Ana sayfa](README.md) · [English](../en/models.md) · [Mac kurulumu](desktop.md) · [Web kurulumu](deploy.md)
 
 **Model** içeriği üretir. **Sağlayıcı** isteği alır ve hesabından ücretlendirir. **API anahtarı** Banana Studio'nun o sağlayıcıyı kullanmasını sağlar. Modelin adını tanıyor olman, her anahtarın onu açacağı anlamına gelmez.
 

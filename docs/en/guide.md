@@ -1,6 +1,6 @@
 # Your first project in Banana Studio
 
-[Home](../../README.md#english) · [Türkçe](../tr/guide.md) · [Install](desktop.md) · [Models and keys](models.md)
+[Home](../../README.md) · [Türkçe](../tr/guide.md) · [Install](desktop.md) · [Models and keys](models.md)
 
 Banana Studio brings the steps of a creative project into one workspace: gather references, describe an idea, explore alternatives, generate, refine and save. The AI models are external services; the app is the interface and project organizer around them.
 
@@ -33,6 +33,12 @@ Saved **People** entries group identity photos of the same person. Multiple phot
 
 ## Enhance and brainstorm
 
+![The real Brainstorm panel over existing generated covers](../assets/brainstorm-real.jpg)
+
+In **Brainstorm**, choose **Simple** for general visual concepts or **YouTube** for cover concepts. Set the idea count independently from the image count in the generation toolbar. For example, five ideas and four images per idea create twenty outputs. The reference-role summary groups identity photos so six photos of one person still count as one person.
+
+Use **Enhance** when you want to develop the current idea rather than request a batch of different concepts. It prepares instructions for your selected generation model; review or edit the text before submitting. **Revert** restores the draft from before preparation.
+
 **Enhance** turns your brief into production instructions. **Brainstorm** proposes distinct concepts and can create multiple images per idea. In **AI settings**, choose Opus 5.5 through OpenRouter, GPT-6.1 Sol through OpenAI or Gemini 3.8 Flash through Google, and set the thinking/reasoning level. The initial creative setting is Opus 5.5 / Medium.
 
 Production descriptions are prepared in English even if your draft is Turkish. Requested visible text, names and quoted dialogue keep their intended language. Review the enhanced prompt when exact wording matters.
@@ -45,9 +51,16 @@ For YouTube covers, Brainstorm includes camera-facing gaze guidance and distinct
 2. Use **Mask** to draw an outline or **Rectangle** to select a box. Closed masks fill their interior.
 3. Use layers for multiple areas. **Shift + draw** adds a layer; select a layer to redraw it or remove it from the layer strip.
 4. Describe the change, select the edit model, quality and image count, and optionally enhance the prompt.
-5. Submit the edit and inspect its new results. Use the source/result comparison slider to check the change.
+5. Add optional reference images with **REF**, and type `@` to insert their labels into the edit prompt.
+6. Submit the edit and inspect its new results. Use the source/result comparison slider to check the change.
 
 The result is composited into the final selection; outside pixels remain from the source. Select enough surrounding context for a different silhouette or pose: removing a held object may also require selecting the hand and wrist. The app does not silently expand your selection.
+
+![Real selected-area editor, references and prompt controls](../assets/edit-controls-real.jpg)
+
+The Generate button becomes available for another submission once the job has been accepted; you do not need to keep waiting in a blocked “Generating” state. Results appear in the editor's result strip and as separate gallery items. Keep the current source and selections for another attempt, or inspect a finished result.
+
+![A previously completed edit compared with its source](../assets/comparison-real.jpg)
 
 Use **Edit this result** to continue from a result or return to the source for another attempt. Results are separate gallery items.
 
@@ -58,6 +71,7 @@ Use **Edit this result** to continue from a result or return to the source for a
 3. Review the episode promise and selected people. Adjust the brief before Brainstorm to redirect the concept.
 4. Add identity/object references or earlier channel covers as style examples. Explain a reference's role when it could be ambiguous.
 5. Choose idea/image counts, brainstorm and compare the results.
+6. Open a result and choose **YouTube Preview** to evaluate the cover in a simulated YouTube feed layout.
 
 Footage analysis accepts published videos with a known duration up to 2.5 hours; active live streams are unsupported. Google/provider access to the video is also required. Review factual analysis before using it.
 
@@ -72,9 +86,17 @@ Choose a video model first: supported modes, durations, sizes and inputs differ.
 
 The interface validates inputs and shows mode-specific controls. Some reference-video preprocessing also needs fal.ai. Keep the Mac app open during jobs. The hosted version has a durable queue for OpenAI image jobs; other providers use their task histories and polling. A timeout does not prove that a paid request was never accepted. Check the task/result before submitting it again.
 
+[![A real generated video preview](../assets/video-preview.gif)](https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4)
+
+This is an existing MiniMax H3 clip, compressed and muted for documentation. [Open the full 15-second MP4](https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4). In the app player, use the timeline, play/pause, volume and fullscreen controls. It is a historical output, not a new H3 Max test.
+
 ## Organize and reuse
 
 Use folders, favorites and search. Save references, people and templates. Details show available prompts, models, dimensions, cost and reference/edit metadata; older records may lack some fields. Re-create restores settings, while variations explore alternatives.
+
+Open gallery images at their natural proportions. Scroll/pinch to zoom, drag to pan and double-click to fit. Use the Details toggle or **Shift+B** to hide the sidebar, and the left/right arrows to change items outside text fields. On mobile, swipe left/right to navigate and down on the image to dismiss the viewer. Editing gestures stay dedicated to drawing the selection.
+
+Use multi-select to move or download work together, change the grid density and filter images/videos. The image comparison dialog can compare selected images; an edited image also has its own **Comparison** switch for the source/result slider. Search with the gallery search control (**⌘K / Ctrl+K**). Save templates to reuse prompts and settings, and keep identity collections in People separately from general references.
 
 Public folder links and multi-user administration belong to the hosted web workspace. Local Mac folders do not get public URLs.
 

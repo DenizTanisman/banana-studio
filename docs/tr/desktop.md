@@ -1,6 +1,6 @@
 # Banana Studio kurulumu ve kullanımı
 
-[Ana sayfa](../../README.md#türkçe) · [English](../en/desktop.md) · [Kullanım](guide.md) · [Anahtarlar](models.md)
+[Ana sayfa](README.md) · [English](../en/desktop.md) · [Kullanım](guide.md) · [Anahtarlar](models.md)
 
 ## Mac: indir ve aç
 

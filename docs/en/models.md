@@ -1,6 +1,6 @@
 # Models, providers and API keys
 
-[Home](../../README.md#english) · [Türkçe](../tr/models.md) · [Mac setup](desktop.md) · [Web setup](deploy.md)
+[Home](../../README.md) · [Türkçe](../tr/models.md) · [Mac setup](desktop.md) · [Web setup](deploy.md)
 
 The **model** makes the content. The **provider** accepts the request and bills your account. The **API key** lets Banana Studio use that provider. A familiar model name does not mean every key can access it.
 

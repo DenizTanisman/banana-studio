@@ -1,6 +1,6 @@
 # Banana Studio'yu geliştir
 
-[Ana sayfa](../../README.md#türkçe) · [English](../en/development.md) · [Web kurulumu](deploy.md) · [Yayın prosedürü](../RELEASING.md)
+[Ana sayfa](README.md) · [English](../en/development.md) · [Web kurulumu](deploy.md) · [Yayın prosedürü](../RELEASING.md)
 
 Banana Studio tek React arayüzü ve iki çalışma alanı arka ucu kullanır. Bağımsız Mac uygulaması; bulut kimlik doğrulaması, veritabanı, depolama ve kuyruk adaptörlerini yerel karşılıklarıyla değiştirir, ayarlanmış bir Supabase projesi taşımaz. Repo bağımsız kurulum başlatır; üretim veritabanı veya özel Git geçmişi içermez.
 

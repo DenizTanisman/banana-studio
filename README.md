@@ -2,42 +2,102 @@
   <img src="docs/assets/brand.svg" width="680" alt="Banana Studio — images, edits, thumbnails and video" />
 </p>
 
-<p align="center">
-  <strong>Images, edits, YouTube thumbnails and video — with your own API keys.</strong><br />
-  Görsel, alan düzenleme, YouTube kapakları ve video — kendi API anahtarlarınla.
-</p>
+<p align="center"><strong>From a rough idea to images, YouTube thumbnails and video.</strong><br />An open source creative workspace, powered by your own API keys.</p>
 
 <p align="center">
-  <a href="#english">English</a> · <a href="#türkçe">Türkçe</a> ·
-  <a href="https://github.com/orkunisitmak/banana-studio/releases/latest">Download / İndir</a> ·
-  <a href="#self-hosting">Web setup / Web kurulumu</a>
+  <strong>English</strong> · <a href="docs/tr/README.md">Türkçe</a> ·
+  <a href="https://github.com/orkunisitmak/banana-studio/releases/latest">Download for Mac</a> ·
+  <a href="#features">Features</a> · <a href="#self-hosting">Web setup</a>
 </p>
 
-<p align="center">
-  <img src="docs/assets/workspace.jpg" width="1200" alt="Banana Studio gallery and generation controls in an isolated demo workspace with original sample illustrations" />
-</p>
+<p align="center"><img src="docs/assets/gallery-real.jpg" width="1200" alt="Real iPhone episode thumbnail generations in the project owner's hosted gallery, with identity references, prompt and generation controls" /></p>
 
-<p align="center"><sub>Real interface, original demo artwork. No personal photos, user generations or real API keys.<br />Gerçek arayüz, bu rehber için hazırlanmış örnek çizimler. Kişisel fotoğraf, kullanıcı üretimi veya gerçek API anahtarı içermez.</sub></p>
+<p align="center"><sub>Real creations and interface captures from the project owner's account, shared with permission. <a href="docs/assets/README.md">About the demos</a></sub></p>
 
-## English
+<a id="english"></a>
 
-**Banana Studio is an open source creative workspace for making images, editing selected areas, planning YouTube thumbnails and generating video.** Choose a model, add your own API key and keep your projects together in a gallery. You do not need to write code to use the Mac app.
+**Banana Studio brings image generation, selected-area editing, thumbnail planning and video into one gallery.** Start with a sentence, reference images or a YouTube episode. Explore concepts with Brainstorm, refine instructions with Enhance, then generate and compare the results. You do not need to write code to use the Mac app.
 
-The app is free under the [MIT license](LICENSE). AI services charge for their API usage; the app does not include model credits. Models run with external providers, so generation needs internet access.
+The app is free under the [MIT license](LICENSE). AI providers bill their API usage separately; model credits are not included. Generation needs internet access.
 
-### What can you make?
+<a id="features"></a>
 
-| Start with… | Make it with Banana Studio |
+## Explore ideas with Brainstorm
+
+Turn one brief into **multiple distinct concepts**, then generate multiple images per concept. Choose **Simple** for general ideas or **YouTube** for cover concepts. Idea count and images per idea are separate controls: five ideas × four images produces twenty results.
+
+Brainstorm uses your brief, selected People and the roles of your references. For YouTube covers it directs the model to use readable composition, camera-facing people and different wardrobe plans across ideas, unless your brief specifies a fixed outfit. Your own creative instructions remain part of the request.
+
+<p align="center"><img src="docs/assets/brainstorm-real.jpg" width="1000" alt="Brainstorm panel over real generated thumbnails: YouTube mode, five ideas, grouped identity photos and images-per-idea total" /></p>
+
+## Refine a prompt with Enhance
+
+Write a short draft in your own words. **Enhance** prepares more specific instructions for the chosen image or video model: subject, composition, lighting, reference roles and, for video, motion and timing. It also works inside the area editor. Review the result, adjust it yourself or use **Revert** to restore the original draft.
+
+Production descriptions are prepared in English even from a Turkish draft; requested visible text, names and quoted dialogue keep their intended language. Select **Opus 5.5, GPT-6.1 Sol or Gemini 3.8 Flash** and the thinking level in **AI settings**. The initial creative setting is **Opus 5.5 / Medium**. Details retain the preparation model and reasoning level when recorded.
+
+## Edit an area, keep the rest
+
+Open **Edit image**, draw a filled freehand **Mask** or **Rectangle**, then describe the change. Each selection is a layer: **Shift + draw** adds another, and the layer strip lets you select, redraw or remove areas. Add extra image references and use `@` mentions in the edit prompt. Choose the model, quality and image count; Enhance is optional.
+
+**Pixels outside the final selection are preserved from the source.** References alone stay in normal generation mode; protected editing begins only when you explicitly select an edit area. For a change that needs a new silhouette, include enough context in your selection—for example, the hand and wrist when removing a held object.
+
+<p align="center"><img src="docs/assets/area-edit-real.jpg" width="1000" alt="A real generated cover in Edit image: headline and price selected in a rectangle layer, while the person's face stays outside the selected region" /></p>
+
+Edits run as jobs, with progress and new gallery results. Submit another attempt without waiting for the previous output. Inspect the **source/result comparison slider**, return to the source or choose **Edit this result** to continue.
+
+<details>
+<summary>See the edit controls and before/after comparison</summary>
+
+<p><img src="docs/assets/edit-controls-real.jpg" width="1000" alt="Actual edit composer with reference upload, prompt, model, quality, plus/minus image count and Enhance" /></p>
+<p><img src="docs/assets/comparison-real.jpg" width="1000" alt="Source and edited cover compared with the gallery's movable divider; the headline changes while the portrait is retained" /></p>
+
+The rectangle and draft above demonstrate the editor controls; no new generation was submitted for these captures. The comparison shows a previously completed edit from the same account.
+
+</details>
+
+## Bring a YouTube episode into the workflow
+
+Search for a channel or video with **YT**, analyze the footage, review the episode's main promise and choose the people to feature. Use that brief for Brainstorm or edit it before generating. Add previous channel covers as style references, identity photos for People and product images for specific objects. **YouTube Preview** lets you inspect a finished cover in a simulated YouTube layout.
+
+The video reader and creative brief use different provider routes. The [key guide](docs/en/models.md) explains the combination. [Follow the thumbnail workflow →](docs/en/guide.md#plan-a-youtube-thumbnail)
+
+## Make video from text, images and references
+
+Use model-specific controls for duration, aspect ratio, quality and inputs. **Seedance 2.0 / 2.5 Relaxed** and **MiniMax H3 Max** provide different workflows; the interface shows the selected mode's controls. Seedance 2.5 first/last-frame mode uses two still images to direct the opening and ending.
+
+MiniMax H3 Max modes: **Text to Video Max · Image to Video Max · Reference to Video Max · Extend Video Max · Lip Sync Max · Recast**. Add image, video or audio references where supported, prepare motion instructions with Enhance, follow the job, then play or download the result.
+
+<p align="center"><a href="https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4"><img src="docs/assets/video-preview.gif" width="640" alt="Animated preview of a real generated video: two costumed characters emerge from plush toys inside an arcade claw machine" /></a></p>
+
+<p align="center"><strong><a href="https://github.com/orkunisitmak/banana-studio/blob/main/docs/assets/video-demo.mp4">Open the real 15-second clip (MP4) →</a></strong><br /><sub>A previously generated MiniMax H3 clip from the owner's account. Compressed, silent documentation preview; not a new benchmark of the current Max model.</sub></p>
+
+<details>
+<summary>See the real video player and saved generation details</summary>
+
+<p><img src="docs/assets/video-real.jpg" width="1000" alt="Actual gallery video player with the selected clip, prompt, saved model, duration and quality" /></p>
+
+</details>
+
+## Keep the whole project together
+
+| Feature | What it does |
 | --- | --- |
-| A sentence or a few reference images | Generate a new image. Use `@` references to explain who or what belongs in the scene. |
-| One part of an image you want to change | Draw a mask or rectangle, add selection layers and describe the edit. The final selection's outside pixels are preserved from the source. |
-| A YouTube episode or a rough cover idea | Analyze a video, brainstorm distinct thumbnail concepts, enhance the prompt and generate variations. |
-| A still image, text, audio or reference clips | Generate video with the controls supported by the selected video model. |
-| A growing collection of work | Organize folders, favorites, references, people and templates; inspect generation details, recreate work and compare an edit with its source. |
+| **Image generation** | GPT Image 2.5, Nano Banana Pro and Nano Banana 2.1; aspect ratio, size/custom dimensions, quality and image count where supported. |
+| **References and `@` mentions** | Upload or reuse images; assign identity, object, style or scene roles. Attaching a reference does not force an area edit. |
+| **People** | Save grouped identity photos; several photos of one person still represent one person. |
+| **Reference library and templates** | Reuse source material and saved prompt/settings combinations across projects. |
+| **Re-create and Variation** | Restore a result's prompt and settings, or explore a new variation. |
+| **Gallery organization** | Nested folders, favorites, search, image/video filters, grid density, multi-select and moving work between folders. |
+| **Viewer and comparison** | Natural image proportions, zoom/pan, side-by-side image comparison and source/edit slider. Arrow-key navigation, Details toggle with **Shift+B**, and mobile swipe navigation/dismissal. |
+| **Jobs and history** | Progress, notifications, completed results and recoverable task information; hosted OpenAI image jobs use a durable queue. |
+| **Generation details** | Available prompts, references, dimensions, model, quality, cost, generation time, preparation model/reasoning and saved edit layers/source. Older records may have fewer fields. |
+| **Export and sharing** | Download images/videos. Hosted web workspaces also support expiring public folder links for viewing and downloading completed images. |
+| **Workspace administration** | Hosted account access and owner/admin controls; standalone Mac keeps its own local workspace. |
 
-<p align="center"><img src="docs/assets/area-edit.jpg" width="1000" alt="A rectangle selection and edit layers in the real Banana Studio image editor, using a sample illustration" /></p>
+[Read the illustrated user guide →](docs/en/guide.md)
 
-### Pick your way in
+## Get started
 
 | Your device | Available today | Start here |
 | --- | --- | --- |
@@ -48,7 +108,7 @@ The app is free under the [MIT license](LICENSE). AI services charge for their A
 
 **Mac quick start:** download → unzip → move to Applications → open → **Provider keys** → add the key for your model → generate. The standalone app needs **no Supabase, Vercel, Google sign-in or separate Node installation**. The gallery stays on your Mac, and API keys stay in macOS Keychain. Keep the app open while jobs run; minimizing is fine. [First-open permissions, updates and backups →](docs/en/desktop.md)
 
-### Which key do I need?
+## Models and API keys
 
 An API key is a private credential that lets the app use your account with an AI provider. Add only the providers you plan to use. These are the routes implemented **in this app**, not a list of every service offering each model.
 
@@ -66,77 +126,20 @@ An API key is a private credential that lets the app use your account with an AI
 
 The default image model is **GPT Image 2.5**; the default creative text model is **Opus 5.5 / Medium**. This pairing needs OpenAI + OpenRouter keys. Change the text model and thinking level in **AI settings**. Gemini keys alone do not enable the fal.ai image models. Full YouTube analysis needs the YouTube lookup key, Gemini for footage and the chosen creative model's provider. Some video-reference resizing also uses fal.ai. [Key creation links, examples and the complete feature map →](docs/en/models.md)
 
-### Built for users and developers
+## How it is built
 
-The interface is **React + TypeScript + Vite**. The native Mac shell uses **AppKit + WKWebView**, bundles a **Node.js** server, saves to **SQLite + local files**, stores credentials in **Keychain** and updates through **Sparkle**. The web version uses **Vercel Functions / Queues / Cron** and **Supabase Postgres / Auth / private Storage**, with Google sign-in.
+The shared interface is **React + TypeScript + Vite**. The native Mac shell uses **AppKit + WKWebView**, bundles a **Node.js** server, saves to **SQLite + local files**, keeps credentials in **Keychain** and updates through **Sparkle**. The hosted web version uses **Vercel Functions / Queues / Cron** and **Supabase Postgres / Auth / private Storage**, with Google sign-in.
 
-Selected prompts and references go to the provider handling the task. The desktop gallery has no built-in cloud sync; public folder links and account administration belong to the hosted web version. [Data boundaries](SECURITY.md) · [User guide](docs/en/guide.md) · [Developer setup and architecture](docs/en/development.md)
-
----
-
-## Türkçe
-
-**Banana Studio; görsel üretimi, seçili alan düzenleme, YouTube kapak fikirleri ve video üretimini aynı yerde toplayan açık kaynak bir yaratıcı çalışma alanı.** Modelini seç, kendi API anahtarını ekle, çalışmalarını galerinde biriktir. Mac uygulamasını kullanmak için kod yazman gerekmiyor.
-
-Uygulama [MIT lisansıyla](LICENSE) ücretsizdir. Yapay zekâ servisleri API kullanımını ayrıca ücretlendirir; uygulama model kredisi içermez. Üretimler harici sağlayıcılarda çalıştığından internet bağlantısı gerekir.
-
-### Neler yapabilirsin?
-
-| Elinde ne var? | Banana Studio ile ne yapabilirsin? |
-| --- | --- |
-| Bir fikir veya birkaç referans görsel | Yeni bir görsel üret. `@` referanslarıyla sahnede hangi kişi veya nesnenin kullanılacağını anlat. |
-| Görselde değiştirmek istediğin bir bölüm | Maske veya dikdörtgen çiz, seçim katmanları ekle ve değişikliği yaz. Son seçimin dışındaki pikseller kaynak görselden korunur. |
-| Bir YouTube videosu veya kapak fikri | Videoyu analiz et, Brainstorm ile farklı kapak fikirleri oluştur, promptu geliştir ve varyasyonlar üret. |
-| Metin, görsel, ses veya referans videolar | Seçtiğin video modelinin desteklediği kontrollerle video üret. |
-| Biriken çalışmalar | Klasör, favori, referans, kişi ve şablonlarla düzenle; üretim bilgilerini incele, yeniden üret ve düzenlemeyi kaynağıyla karşılaştır. |
-
-### Hangi cihazda nasıl kullanılır?
-
-| Cihazın | Bugün sunulan sürüm | Buradan başla |
-| --- | --- | --- |
-| Apple Silicon işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-arm64.zip) · [Kurulum rehberi](docs/tr/desktop.md) |
-| Intel işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-x64.zip) · [Kurulum rehberi](docs/tr/desktop.md) |
-| Windows | Tarayıcı üzerinden web sürümü; **henüz yerel Windows kurulum paketi yayımlanmadı** | Kendi veya ekibinin kurduğu web adresini aç. [Web kurulumu](docs/tr/deploy.md) |
-| Diğer bilgisayarlar, telefon ve tablet | Tarayıcı üzerinden web sürümü | Kurulmuş web adresini aç; erişimi ve servis anahtarlarını web alanının sahibi yönetir. |
-
-**Mac'te hızlı başlangıç:** indir → zip'i aç → Applications / Uygulamalar'a taşı → aç → **Provider keys** → modelin anahtarını gir → üret. Bağımsız uygulamada **Supabase, Vercel, Google ile giriş veya ayrıca Node kurulumu gerekmez**. Galeri Mac'inde, API anahtarları macOS Anahtar Zinciri'nde tutulur. Üretim sürerken uygulamayı açık tut; pencereyi küçültebilirsin. [İlk açılış izinleri, güncelleme ve yedekleme →](docs/tr/desktop.md)
-
-### Hangi model için hangi anahtar gerekiyor?
-
-API anahtarı, uygulamanın ilgili yapay zekâ servisindeki hesabını kullanmasını sağlayan özel bir erişim bilgisidir. Yalnızca kullanacağın servisleri ekle. Tablo **bu uygulamanın kullandığı bağlantıları** gösterir; modelleri sunan tüm servislerin listesi değildir.
-
-| Model veya özellik | Uygulamadaki sağlayıcı | Anahtar / sunucu değişkeni |
-| --- | --- | --- |
-| GPT Image 2.5 — görsel üretimi ve alan düzenleme | OpenAI | `OPENAI_API_KEY` |
-| Nano Banana Pro | fal.ai | `FAL_KEY` |
-| Nano Banana 2.1 | fal.ai | `FAL_KEY` |
-| Claude Opus 5.5 — Enhance, Brainstorm, varyasyon ve yaratıcı brief | OpenRouter | `OPENROUTER_API_KEY` |
-| GPT-6.1 Sol — aynı metin görevleri | OpenAI | `OPENAI_API_KEY` |
-| Gemini 3.8 Flash — metin görevleri ve YouTube videosunu okuma | Google Gemini | `GEMINI_API_KEY` |
-| Seedance 2.0 / Seedance 2.5 Relaxed | EvoLink | `EVOLINK_API_KEY` |
-| MiniMax H3 Max — metin/görsel/referanstan video, uzatma, lip sync ve recast | fal.ai | `FAL_KEY` |
-| YouTube kanal/video araması | Google YouTube Data API v3 | `YOUTUBE_API_KEY` |
-
-Varsayılan görsel modeli **GPT Image 2.5**, yaratıcı metin modeli **Opus 5.5 / Medium**. Bu ikili için OpenAI + OpenRouter anahtarları gerekir. Metin modelini ve düşünme seviyesini **AI settings** üzerinden değiştirebilirsin. Gemini anahtarı tek başına fal.ai üzerinden çalışan görsel modellerini açmaz. Tam YouTube analizi için YouTube arama anahtarı, videoyu okumak için Gemini ve seçilen yaratıcı modelin sağlayıcısı gerekir. Bazı video referansı boyutlandırmaları ayrıca fal.ai kullanır. [Anahtar oluşturma bağlantıları, örnekler ve tam özellik tablosu →](docs/tr/models.md)
-
-### Hangi sistemleri kullanıyor?
-
-Arayüz **React + TypeScript + Vite** ile hazırlanır. Mac uygulaması **AppKit + WKWebView** içinde çalışır; kendi **Node.js** sunucusunu taşır, verileri **SQLite + yerel dosyalara**, anahtarları **Anahtar Zinciri'ne** kaydeder, **Sparkle** ile güncellenir. Web sürümü **Vercel Functions / Queues / Cron** ve **Supabase Postgres / Auth / özel Storage** kullanır; Google ile giriş yapılır.
-
-İşlemde kullanılan prompt ve referanslar ilgili sağlayıcıya gönderilir. Masaüstü galerisi otomatik bulut senkronizasyonu yapmaz; herkese açık klasör bağlantıları ve hesap yönetimi kurulan web sürümüne aittir. [Veri ve güvenlik sınırları](SECURITY.md) · [Kullanım rehberi](docs/tr/guide.md) · [Geliştirici kurulumu ve mimari](docs/tr/development.md)
-
----
+Selected prompts and references go to the provider handling the task. Desktop and web galleries are separate; the Mac app has no automatic cloud sync. [Data boundaries](SECURITY.md) · [Architecture and developer setup](docs/en/development.md) · [Release procedure](docs/RELEASING.md)
 
 <a id="self-hosting"></a>
 
-## Put it on the web / Web'e kur
+## Deploy your own web workspace
 
-**English:** want a browser workspace for Windows, Mac and your team? Fork the repository, create your own Supabase project, deploy your fork to Vercel, add the Supabase configuration and your provider keys as server environment variables, configure Google sign-in and activate the first administrator. The checked-in one-minute Cron schedule requires a Vercel plan that supports it; uploading just the frontend is insufficient. The tutorial includes a browser-only SQL Editor route, a variable table, checkpoints and troubleshooting.
+Want a browser workspace for Windows, Mac, mobile and your team? Fork the repository, create your own Supabase project and deploy the fork to Vercel. Add your Supabase configuration and provider keys as **server environment variables**, configure Google sign-in and activate the first administrator. The one-minute Cron schedule requires a Vercel plan that supports it; the frontend alone is insufficient.
+
+The tutorial includes a browser-only SQL Editor route, the required variable table, verification checkpoints and troubleshooting. No existing Banana Studio database or personal account is included.
 
 **[Open the step-by-step web deployment tutorial →](docs/en/deploy.md)**
 
-**Türkçe:** Windows, Mac ve ekibin için tarayıcıdan açılan bir çalışma alanı mı istiyorsun? Repoyu kendi GitHub hesabına kopyala, kendi Supabase projeni oluştur, Vercel'e deploy et, Supabase bilgilerini ve servis anahtarlarını sunucu ortam değişkenlerine gir, Google girişini ayarla ve ilk yöneticiyi etkinleştir. Repodaki dakikalık Cron için bunu destekleyen Vercel planı gerekir; yalnızca arayüz dosyalarını yüklemek yeterli değildir. Rehberde terminal gerektirmeyen SQL Editor yolu, değişken tablosu, her aşamanın kontrolü ve hata çözümleri var.
-
-**[Adım adım web kurulum rehberini aç →](docs/tr/deploy.md)**
-
-<p align="center"><sub><a href="LICENSE">MIT</a> · <a href="SECURITY.md">Security</a> · <a href="docs/RELEASING.md">Release procedure</a> · <a href="docs/THIRD_PARTY_NOTICES.md">Third-party notices</a></sub></p>
+<p align="center"><sub><a href="LICENSE">MIT</a> · <a href="SECURITY.md">Security</a> · <a href="docs/en/development.md">Contribute</a> · <a href="docs/THIRD_PARTY_NOTICES.md">Third-party notices</a> · <a href="docs/tr/README.md">Türkçe</a></sub></p>
