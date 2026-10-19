@@ -2,7 +2,7 @@
 
 Banana Studio supports community releases without Apple notarization, as well as optional Developer ID signed and notarized releases. Development builds disable updates and remain for local testing only. Community releases keep Sparkle's signed-feed and archive verification enabled.
 
-Run the commands below from the repository root. See the [setup and verification guide](../README.md) and [security policy](../SECURITY.md) for workspace configuration and data boundaries.
+Run the commands below from the repository root. See the [developer setup and verification guide](en/development.md), [web deployment tutorial](en/deploy.md) and [security policy](../SECURITY.md) for workspace configuration and data boundaries.
 
 ## Maintainer setup
 
@@ -16,7 +16,7 @@ Fork maintainers must use their own bundle identifier, Keychain service, Sparkle
 
 Build from a clean committed revision. Increment the package version and choose a positive `BANANA_BUILD_NUMBER` greater than previous releases. Build separately on each supported Mac architecture. The packager rejects a runtime for the wrong architecture and records its source commit in the app.
 
-Run the tests, type checks, web/backend builds, Swift tests, isolated database tests and source/history/independent secret scans listed in README and CI. First package a development app and run:
+Run the tests, type checks, web/backend builds, Swift tests, isolated database tests and source/history/independent secret scans listed in the developer guide and CI. First package a development app and run:
 
 ```sh
 node scripts/test-local-generation.mjs '.build/staging/Banana Studio.app'
