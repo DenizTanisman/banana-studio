@@ -882,7 +882,9 @@ export const generateMedia = async (
   if (activeImageModel !== config.imageModel) config = { ...config, imageModel: activeImageModel };
   const selectedImageModel = isSupportedImageModel(config.imageModel) ? config.imageModel : IMAGE_MODEL_NAME;
 
-  return generateOpenAIImage({ ...config, imageModel: selectedImageModel }, normalizeSunburstPrompt(config.prompt, config.referenceImages || []), context, onProgress);
+  const requestPrompt = config.prompt.trim() || (selectedImageModel !== SUNBURST_MODEL && config.referenceImages?.length
+    ? 'Create a new image using the attached references.' : config.prompt);
+  return generateOpenAIImage({ ...config, imageModel: selectedImageModel }, normalizeSunburstPrompt(requestPrompt, config.referenceImages || []), context, onProgress);
 };
 
 // Category-specific brainstorm prompts - optimized for Nano Banana image models
