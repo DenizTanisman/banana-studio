@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, requireUser } from './_lib/auth.js';
+import { providerAvailability } from './_lib/providerConfiguration.js';
 
 /**
  * Lightweight status endpoint so the client can decide whether to surface
@@ -12,9 +13,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!await requireUser(req, res)) return;
 
-  const configured = Boolean(process.env.GEMINI_API_KEY);
+  const providers = providerAvailability();
+  const configured = Boolean(providers.gemini || providers.openrouter);
   res.setHeader('Cache-Control', 'no-store');
-  return res.status(200).json({ configured,
+  return res.status(200).json({ configured, providers,
     openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY?.trim()) && process.env.OPENROUTER_ENABLED !== 'false',
   });
 }

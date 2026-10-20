@@ -491,7 +491,7 @@ const AuthorizedWorkspace: React.FC<{
    * gallery tile in place.
    */
   const resumePendingImage = async (pending: GeneratedMedia) => {
-    if (pending.imageModel === SUNBURST_MODEL) {
+    if (pending.imageQueue?.version === 1 || pending.openaiStartedAt || pending.imageModel === SUNBURST_MODEL) {
       setActiveRequests(prev => prev + 1);
       try {
         const media = await resumeOpenAIImage(pending, progress => {
@@ -755,25 +755,8 @@ const AuthorizedWorkspace: React.FC<{
     folderId: string | null,
   ): Promise<{ ok: boolean; error?: string }> => {
     ownImageJobsRef.current.add(placeholder.id);
-    const isFal = isFalImageModel(batchConfig.imageModel);
     try {
       await assertWorkspaceSession();
-      if (isFal) {
-        // Persist the source and mask before submitting a resumable image job.
-        const persisted = await createPendingImage(placeholder.id, batchConfig.prompt, {
-          aspectRatio: batchConfig.aspectRatio,
-          resolution: batchConfig.resolution,
-          imageModel: batchConfig.imageModel,
-          folderId,
-          referenceImages: batchConfig.referenceImages,
-          originalPrompt: batchConfig.originalPrompt,
-          promptPreparation: batchConfig.promptPreparation,
-          youtubeSource: batchConfig.youtubeSource,
-          imagePromptCategory: batchConfig.imagePromptCategory,
-          imageEditSourceId: placeholder.imageEditSourceId,
-        });
-        if (!persisted) throw new Error('Could not save the queued image. No generation was submitted.');
-      }
       const editSource = await prepareProtectedImageSource(batchConfig);
       const generated = await generateMedia(
         batchConfig,
@@ -782,17 +765,7 @@ const AuthorizedWorkspace: React.FC<{
             item.id === placeholder.id ? { ...item, imageProgress: progress } : item
           ));
         },
-        // Once fal returns the request_id, store it in the row's metadata
-        // so resume-on-boot has everything it needs.
-        isFal
-          ? async (requestId, endpoint) => {
-              await assertWorkspaceSession();
-              await setImageTaskInfo(placeholder.id, requestId, endpoint, { originalPrompt: batchConfig.originalPrompt, promptPreparation: batchConfig.promptPreparation, youtubeSource: batchConfig.youtubeSource, imagePromptCategory: batchConfig.imagePromptCategory, imageEditSourceId: placeholder.imageEditSourceId });
-              setGeneratedMedia(prev => prev.map(item =>
-                item.id === placeholder.id ? { ...item, taskId: requestId, status: 'processing' } : item
-              ));
-            }
-          : undefined,
+        undefined,
         { id: placeholder.id, folderId, onStage: (imageStage,imageQueueWaitReason) => {
           setGeneratedMedia(previous => previous.map(item => item.id === placeholder.id
             ? { ...item, imageStage, imageQueueWaitReason, imageProgress: undefined, status: imageStage === 'generating' ? 'processing' : 'pending' } : item));
@@ -805,7 +778,7 @@ const AuthorizedWorkspace: React.FC<{
       media.promptPreparation = batchConfig.promptPreparation;
       media.youtubeSource = batchConfig.youtubeSource;
       media.imageEditSourceId = placeholder.imageEditSourceId;
-      if (batchConfig.imageModel === SUNBURST_MODEL) {
+      if (media.imageQueue || media.openaiStartedAt) {
         // The server already committed the original, settings and billing.
         // Optional browser persistence/auth must not turn that success into
         // an error card or overwrite the worker's authoritative metadata.
@@ -826,11 +799,6 @@ const AuthorizedWorkspace: React.FC<{
       return { ok: true };
     } catch (error: any) {
       const message = (error as any)?.message || 'Generation failed';
-      if (isFal) {
-        await updateImageStatus(placeholder.id, 'failed', {
-          metadata: { error: message },
-        });
-      }
       setGeneratedMedia(prev => prev.map(item =>
         item.id === placeholder.id
           ? { ...item, isLoading: false, url: '', status: 'failed', error: message, imageProgress: undefined }
@@ -958,7 +926,7 @@ const AuthorizedWorkspace: React.FC<{
         await updateVideoStatus(videoId, 'processing', {
           referenceImages,
           metadata: {
-            generationCost: cost,
+            generationCost: cost, providerModel: endpoint, generationProvider: taskId.startsWith('bs_openrouter_') ? 'openrouter' : taskId.startsWith('bs_fal_') || config.videoModel === 'minimax-h3' ? 'fal' : 'evolink',
             referenceVideos,
             referenceAudios,
             falEndpoint: endpoint,
@@ -983,7 +951,7 @@ const AuthorizedWorkspace: React.FC<{
         if (config.videoModel !== 'minimax-h3') logVideoUsage(config.prompt, 1, config, mode, cost);
 
         setGeneratedMedia(prev => prev.map(item =>
-          item.id === videoId ? { ...item, status: 'processing', taskId, falEndpoint: endpoint, falQueueEndpoint: queueEndpoint, generationCost: cost, referenceImages: referenceImages || item.referenceImages, referenceVideos, referenceAudios } : item
+          item.id === videoId ? { ...item, status: 'processing', taskId, generationProvider: taskId.startsWith('bs_openrouter_') ? 'openrouter' : taskId.startsWith('bs_fal_') || config.videoModel === 'minimax-h3' ? 'fal' : 'evolink', falEndpoint: endpoint, falQueueEndpoint: queueEndpoint, generationCost: cost, referenceImages: referenceImages || item.referenceImages, referenceVideos, referenceAudios } : item
         ));
 
         const videoResult = await pollVideoTask(taskId, (progress) => {
@@ -1561,8 +1529,8 @@ const AuthorizedWorkspace: React.FC<{
         newMedia.promptPreparation = variationConfig.promptPreparation;
 
         await assertWorkspaceSession();
-        const savedResult = await saveImage(newMedia);
-        const remoteMedia = mergeSavedMedia(newMedia, savedResult);
+        const savedResult = newMedia.openaiStartedAt ? null : await saveImage(newMedia);
+        const remoteMedia = newMedia.openaiStartedAt ? newMedia : mergeSavedMedia(newMedia, savedResult);
 
         setGeneratedMedia(prev => prev.map(item =>
           item.id === placeholder.id ? remoteMedia : item

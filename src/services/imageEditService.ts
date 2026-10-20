@@ -36,6 +36,7 @@ export const prepareProtectedImageSource = async (config: Pick<GenerationConfig,
 };
 
 export const finishProtectedImageEdit = async (media: GeneratedMedia, source?: ProtectedImageSource): Promise<GeneratedMedia> => {
+  if (media.imageEditProtection?.preservedOutsideRegion) return media;
   if (!source) return media;
   const { reference, decoded } = source;
   if (!isValidEditRegion(reference.editRegion)) throw new Error(EDIT_REGION_REQUIRED);

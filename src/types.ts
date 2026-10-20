@@ -454,6 +454,7 @@ export interface PromptPreparation {
 }
 
 export interface GenerationConfig {
+  imageProvider?: import('./lib/providers.js').AIProvider;
   prompt: string;
   /** Brief before Enhance or Brainstorm, retained for Revert/Re-create. */
   originalPrompt?: string;
@@ -554,6 +555,8 @@ export const isEnhancedPromptStale = (config: GenerationConfig): boolean => Bool
 );
 
 export interface GeneratedMedia {
+  generationProvider?: import('./lib/providers.js').AIProvider;
+  providerModel?: string;
   id: string;
   url: string;
   thumbnailUrl?: string;

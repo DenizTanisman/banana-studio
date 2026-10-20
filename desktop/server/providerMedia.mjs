@@ -8,3 +8,4 @@ export const providerImageUrl = async (_db,value) => {
   const ext=key.split('.').at(-1).toLowerCase();const mime={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'}[ext];if(!mime)throw new Error('Unsupported reference format.');
   return `data:${mime};base64,${bytes.toString('base64')}`;
 };
+export const providerImageData = providerImageUrl;

@@ -1,3 +1,4 @@
+import { ProviderRouteControl, useProviderRoute } from './ProviderRoutingSettings';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getClipboardImages } from '../lib/references/clipboardImages';
 import { AlertTriangle, ArrowRight, Check, Image as ImageIcon, ImagePlus, Loader2, Pencil, RotateCcw, Sparkles, Wand2, X } from 'lucide-react';
@@ -40,6 +41,7 @@ export const GalleryImageEditor: React.FC<GalleryImageEditorProps> = ({ image, i
   const [mention, setMention] = useState<{ start: number; end: number; query: string }>();
   const [mentionIndex, setMentionIndex] = useState(0);
   const [imageModel, setImageModel] = useState<ImageModelId>(SUNBURST_MODEL);
+  const providerRoute = useProviderRoute(imageModel);
   const [count, setCount] = useState(1);
   const [quality, setQuality] = useState<OpenAIImageOptions['quality']>(() => getOpenAIImageOptions(image.openaiImageOptions).quality);
   const [previewId, setPreviewId] = useState<string>();
@@ -85,8 +87,8 @@ export const GalleryImageEditor: React.FC<GalleryImageEditorProps> = ({ image, i
   const nanoCanvasSupported = canvas ? canUseNanoEditCanvas(canvas) : true;
   const canvasError = canvas ? imageModel === SUNBURST_MODEL ? validateOpenAIImageSize(`${canvas.width}x${canvas.height}`)
     : !nanoCanvasSupported ? 'Choose GPT Image 2.5 to keep this canvas.' : null : null;
-  const canGenerate = !busy && !preview && !!prompt.trim() && !!config && !isStale && !canvasError && !referenceError;
-  const imageCostPreview = config ? getImageCostPreview(config) : undefined;
+  const canGenerate = !providerRoute.error && !busy && !preview && !!prompt.trim() && !!config && !isStale && !canvasError && !referenceError;
+  const imageCostPreview = config ? getImageCostPreview({ ...config, imageProvider: providerRoute.provider }) : undefined;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -280,6 +282,7 @@ export const GalleryImageEditor: React.FC<GalleryImageEditorProps> = ({ image, i
           </button>) : <p className="p-3 text-xs text-gray-400">No matching reference.</p>}
         </div>}
       </div>
+      <div className="px-4 py-2"><ProviderRouteControl model={imageModel} compact /></div>
       <div className={PROMPT_TOOLBAR_CLASS}>
         <div className={PROMPT_SETTINGS_CLASS} role="group" aria-label="Edit settings">
           <Dropdown label="Edit model" value={imageModel} options={IMAGE_MODEL_OPTIONS.map(model => ({ ...model, disabled: model.value !== SUNBURST_MODEL && (!nanoCanvasSupported || references.length > getGalleryEditReferenceLimit(model.value)) }))} onSelect={value => { if (busyRef.current) return; setImageModel(value as ImageModelId); setError(null); setGenerationStarted(false); }} icon={ImageIcon} compact disabled={busy} />

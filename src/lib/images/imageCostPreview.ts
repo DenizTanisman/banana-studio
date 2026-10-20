@@ -46,7 +46,7 @@ export interface ImageCostPreview {
   basis: 'output' | 'history' | 'fixed' | 'unknown';
 }
 
-export type ImageCostSample = Pick<GeneratedMedia, 'id' | 'imageModel' | 'openaiImageOptions' | 'imageRequestedSize' | 'imageOutputSize' | 'referenceImages' | 'openaiUsage'>;
+export type ImageCostSample = Pick<GeneratedMedia, 'generationProvider' | 'id' | 'imageModel' | 'openaiImageOptions' | 'imageRequestedSize' | 'imageOutputSize' | 'referenceImages' | 'openaiUsage'>;
 
 const referenceKey = (references: GenerationConfig['referenceImages']): string | null => {
   // Do not identify unrelated photos merely by their count. Reference IDs survive upload.
@@ -54,8 +54,9 @@ const referenceKey = (references: GenerationConfig['referenceImages']): string |
   return JSON.stringify(references.map(ref => [ref.id, ref.mimeType]));
 };
 
-type CostConfig = Pick<GenerationConfig, 'imageModel' | 'resolution' | 'aspectRatio' | 'openaiImageOptions' | 'referenceImages' | 'count'>;
+type CostConfig = Pick<GenerationConfig, 'imageProvider' | 'imageModel' | 'resolution' | 'aspectRatio' | 'openaiImageOptions' | 'referenceImages' | 'count'>;
 export const getImageCostPreview = (config: CostConfig, count = config.count, history: ImageCostSample[] = []): ImageCostPreview => {
+  if (config.imageProvider && config.imageProvider !== (config.imageModel === SUNBURST_MODEL ? 'openai' : 'fal')) return { min: null, max: null, label: 'Provider usage-based', description: 'This route uses the selected provider’s billing. Actual cost is shown when returned; another provider’s estimate is not used.', note: '', basis: 'unknown' };
   if (config.imageModel === NANO_BANANA_21_MODEL) {
     const cost = estimateNanoBanana21OutputCost(config.resolution, count);
     return { min: cost, max: cost, label: cost == null ? 'Usage-based' : `~${dollars(cost)} output`,
@@ -80,6 +81,7 @@ export const getImageCostPreview = (config: CostConfig, count = config.count, hi
       || sample.openaiImageOptions?.quality !== options.quality
       || sample.openaiImageOptions?.outputFormat !== options.outputFormat
       || !Array.isArray(sample.referenceImages) || referenceKey(sample.referenceImages) !== key) return [];
+    if (sample.generationProvider && sample.generationProvider !== 'openai') return [];
     const usage: any = sample.openaiUsage;
     // Lite gallery rows omit references. Nonzero image input usage must not
     // accidentally become a matching text-only generation after a reload.

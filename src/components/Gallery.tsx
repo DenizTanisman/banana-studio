@@ -1,3 +1,4 @@
+import { PROVIDER_LABELS } from '../lib/providers';
 import { isLocalWorkspace } from '../lib/config/runtimeConfig';
 import { getPersonGroups, getPersonId } from '../lib/references/personReferences';
 import { personColor } from './PersonAssignment';
@@ -3300,6 +3301,11 @@ export const Gallery: React.FC<GalleryProps> = ({
                 </div>
               )}
 
+              {selectedMedia.generationProvider && <div className="mb-4 rounded-xl border border-gray-700/50 bg-gray-800/30 p-3">
+                <p className="text-[10px] font-bold uppercase text-gray-500">Provider</p>
+                <p className="mt-1 text-sm text-white">{PROVIDER_LABELS[selectedMedia.generationProvider]}</p>
+                {selectedMedia.providerModel && <p className="mt-1 break-all text-xs text-gray-500">{selectedMedia.providerModel}</p>}
+              </div>}
               {/* Metadata Grid */}
               {selectedMedia.mediaType === 'video' ? (
                 <div className="grid grid-cols-2 gap-4">
@@ -3342,7 +3348,7 @@ export const Gallery: React.FC<GalleryProps> = ({
                           ? selectedMedia.falEndpoint?.includes('h3-max')
                             ? 'MiniMax H3 Max'
                             : 'MiniMax H3'
-                          : 'Seedance 2.5 Relaxed'}
+                          : selectedMedia.generationProvider && selectedMedia.generationProvider !== 'evolink' ? 'Seedance 2.5' : 'Seedance 2.5 Relaxed'}
                     </span>
                   </div>
                   <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30">
@@ -3437,7 +3443,7 @@ export const Gallery: React.FC<GalleryProps> = ({
                     <span className="text-[10px] font-bold text-gray-500 uppercase">{selectedMedia.generationCost?.source === 'provider_usage' ? 'Usage Cost' : 'Est. Cost'}</span>
                   </div>
                   <span className="text-sm font-semibold text-green-400">
-                    {selectedMedia.generationCost ? `$${selectedMedia.generationCost.usd.toFixed(4)}` : ['gpt-image-2.5-sunburst','gemini-nano-banana-2.1'].includes(selectedMedia.imageModel || '') ? 'Unavailable' : `~$${estimateImageCost(
+                    {selectedMedia.generationCost ? `$${selectedMedia.generationCost.usd.toFixed(4)}` : ['gpt-image-2.5-sunburst','gemini-nano-banana-2.1'].includes(selectedMedia.imageModel || '') || selectedMedia.generationProvider ? 'Unavailable' : `~$${estimateImageCost(
                       (selectedMedia.imageModel as keyof typeof IMAGE_COST_PER_GEN) || DEFAULT_IMAGE_MODEL,
                       selectedMedia.resolution,
                       1,

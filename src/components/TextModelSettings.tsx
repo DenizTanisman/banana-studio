@@ -88,14 +88,11 @@ export const TextModelSettings: React.FC = () => {
           <span className="mt-2 block text-xs leading-relaxed text-gray-500">High gives briefs more reasoning time. Lower levels respond faster; higher levels may take longer. Applies to new requests.</span>
         </label>
       )}
-      {saved?.preferredModel === OPENROUTER_TEXT_MODEL && saved.openRouterConfigured === false && (
-        <p role="status" className="mt-4 text-xs leading-relaxed text-amber-300">{isLocalWorkspace() ? 'Opus 5.5 is selected. Add your OpenRouter key in Provider keys to use it.' : 'Opus 5.5 is selected. OpenRouter is not enabled on the server yet; new requests use GPT-6.1 Sol. Opus activates automatically once the administrator configures and enables it.'}</p>
-      )}
-      {saved && <p className="mt-4 text-xs text-gray-400">{isLocalWorkspace() ? 'Settings are saved on this Mac.' : `Currently using ${saved.source === 'personal' ? 'your personal settings' : 'settings saved for all users'}.`}</p>}
+      {saved && <p className="mt-4 text-xs text-gray-400">{isLocalWorkspace() ? 'Settings are saved on this computer.' : `Currently using ${saved.source === 'personal' ? 'your personal settings' : 'settings saved for all users'}.`}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" disabled={!saved || !!busy} onClick={() => void save('me')}
           className="flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50">
-          {busy === 'me' && <Loader2 className="h-4 w-4 animate-spin" />}{isLocalWorkspace() ? 'Save on this Mac' : 'Save for me'}
+          {busy === 'me' && <Loader2 className="h-4 w-4 animate-spin" />}{isLocalWorkspace() ? 'Save on this computer' : 'Save for me'}
         </button>
         {!isLocalWorkspace() && saved?.canSaveAll && <button type="button" disabled={!!busy} onClick={() => void save('all')}
           className="flex items-center justify-center gap-2 rounded-xl border border-violet-400/40 px-4 py-2.5 text-sm font-semibold text-violet-200 hover:bg-violet-500/10 disabled:opacity-50">

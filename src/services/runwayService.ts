@@ -1,3 +1,5 @@
+import { selectProvider } from './providerRouting';
+import { seedanceProviderError } from '../lib/video/seedanceProviders';
 import { getPersonGroups, buildPersonIdentityContract } from '../lib/references/personReferences';
 import { GenerationConfig, ReferenceImage, ReferenceVideo, ReferenceAudio, DEFAULT_VIDEO_MODEL, VideoAspectRatio, VideoQuality, VideoCost, VideoModelId, VideoOperation, H3GenerationMode, estimateVideoCost, EVOLINK_CREDITS_PER_USD } from '../types';
 import { logUsage, supabase } from './authService';
@@ -856,7 +858,7 @@ const createH3MaxVideoTask = async (config: GenerationConfig, initiatingUserId?:
 
 export const createVideoTask = async (
   config: GenerationConfig, context?:{id:string}
-): Promise<{ taskId: string; endpoint?: string; queueEndpoint?: string; cost: VideoCost; mode: EvoMode; referenceImages?: ReferenceImage[]; referenceVideos: ReferenceVideo[]; referenceAudios: ReferenceAudio[] }> => {
+): Promise<{ taskId: string; endpoint?: string; queueEndpoint?: string; cost: VideoCost | undefined; mode: EvoMode; referenceImages?: ReferenceImage[]; referenceVideos: ReferenceVideo[]; referenceAudios: ReferenceAudio[] }> => {
   const { data: { session: startingSession } } = await supabase.auth.getSession();
   const initiatingUserId = startingSession?.user?.id;
   const { prompt, referenceImages, referenceVideos, referenceAudios, videoAspectRatio, videoQuality, videoDuration, audioEnabled } = config;
@@ -864,6 +866,7 @@ export const createVideoTask = async (
   const videoOperation = config.videoOperation || 'generate';
   if(videoModel==='minimax-h3')return createH3MaxVideoTask(config,initiatingUserId,context);
 
+  const selectedProvider = await selectProvider(videoModel);
   const refVids = referenceVideos || [];
   const refAudios = referenceAudios || [];
   if (videoModel === 'seedance-2.5' && !refVids.some(video => video.isContinuation)) {
@@ -981,7 +984,7 @@ export const createVideoTask = async (
     ? prepareSeedanceReferenceGenerationPrompt(cleanedPrompt, videoAspectRatio, videoUrls.length, continuationSource)
     : cleanedPrompt;
   const body: Record<string, unknown> = {
-        videoModel,
+        provider: selectedProvider, videoModel,
         mode,
         prompt: finalPrompt || undefined,
         duration: requestDuration,
@@ -996,9 +999,11 @@ export const createVideoTask = async (
   if (videoUrls.length > 0) body.videoUrls = videoUrls;
   if (audioUrls.length > 0) body.audioUrls = audioUrls;
 
+  const routeError = seedanceProviderError(selectedProvider, body as any);
+  if (routeError) throw new Error(routeError);
   const { data: { session: submitSession } } = await supabase.auth.getSession();
   if (submitSession?.user?.id !== initiatingUserId) throw new Error('Session changed before video submission.');
-  const createRes = await fetch('/api/evolink-generate', {
+  const createRes = await fetch('/api/seedance-video', {
     method: 'POST',
     headers: await getServerAuthHeaders(initiatingUserId),
     body: JSON.stringify(body),
@@ -1032,7 +1037,7 @@ export const createVideoTask = async (
     taskId: createData.taskId,
     endpoint: typeof createData.endpoint === 'string' ? createData.endpoint : undefined,
     queueEndpoint: typeof createData.queueEndpoint === 'string' ? createData.queueEndpoint : undefined,
-    cost,
+    cost: selectedProvider === 'evolink' ? cost : undefined,
     mode,
     referenceVideos: resolvedReferenceVideos,
     referenceAudios: resolvedReferenceAudios,
@@ -1070,7 +1075,8 @@ export const pollVideoTask = async (
     endpoint?.startsWith('minimax/h3-max/') === true
     || effectiveQueueEndpoint === 'minimax/h3-max'
   );
-  const providerName = isH3 ? 'fal.ai' : 'EvoLink';
+  const routed = taskId.startsWith('bs_fal_') || taskId.startsWith('bs_openrouter_');
+  const providerName = isH3 || taskId.startsWith('bs_fal_') ? 'fal.ai' : taskId.startsWith('bs_openrouter_') ? 'OpenRouter' : 'EvoLink';
   let consecutiveErrors = 0;
   const MAX_ERRORS = 5;
   let retryableStatusErrors = 0;
@@ -1081,7 +1087,7 @@ export const pollVideoTask = async (
     if (pollingSession?.user?.id !== initiatingUserId) throw new Error('Session changed while checking the video.');
     try {
       const res = await fetch(
-        isH3
+        routed ? `/api/seedance-video?taskId=${encodeURIComponent(taskId)}` : isH3
           ? `/api/fal-h3-video?requestId=${encodeURIComponent(taskId)}${effectiveQueueEndpoint ? `&endpoint=${encodeURIComponent(effectiveQueueEndpoint)}` : ''}`
           : `/api/evolink-status?taskId=${encodeURIComponent(taskId)}`,
         { headers: await getServerAuthHeaders(initiatingUserId), cache: 'no-store' },
@@ -1156,14 +1162,14 @@ export const pollVideoTask = async (
   }
 };
 
-export const logVideoUsage = (prompt: string, count: number, config: GenerationConfig, mode: EvoMode, cost: VideoCost) => {
+export const logVideoUsage = (prompt: string, count: number, config: GenerationConfig, mode: EvoMode, cost: VideoCost | undefined) => {
   const videoModel = config.videoModel || DEFAULT_VIDEO_MODEL;
   const referenceVideoDuration = (config.referenceVideos || []).reduce(
     (total, video) => total + (video.duration != null && video.duration > 0 ? video.duration : 0),
     0,
   );
   logUsage('video_generate' as any, `${videoModel}-${mode.replace(/_/g, '-')}`, prompt, count, {
-    estimatedCost: cost.usd,
+    estimatedCost: cost?.usd ?? null,
     videoQuality: config.videoQuality,
     videoDuration: config.videoDuration,
     audioEnabled: config.audioEnabled !== false,

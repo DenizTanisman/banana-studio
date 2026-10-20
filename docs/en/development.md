@@ -40,7 +40,7 @@ The local server binds a random loopback port and uses a one-time bootstrap plus
 | `scripts/`, `tests/` | Build, package, signature verification, privacy audits and tests |
 | `docs/en/`, `docs/tr/`, `docs/assets/` | Bilingual documentation and original demo artwork |
 
-`runwayService.ts` is a historical filename: current video routes use Seedance/EvoLink and H3 Max/fal.ai, not a Runway API key. Current choices live in [types.ts](../../src/types.ts); routing and allowlists are the source of truth behind [the provider table](models.md).
+`runwayService.ts` is a historical filename: current video routes use Seedance through EvoLink/fal.ai/OpenRouter and H3 Max through fal.ai, not a Runway API key. Current choices live in [types.ts](../../src/types.ts); routing and allowlists are the source of truth behind [the provider table](models.md).
 
 ## Prerequisites and first checks
 

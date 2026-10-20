@@ -101,9 +101,9 @@ MiniMax H3 Max modes: **Text to Video Max · Image to Video Max · Reference to 
 
 | Your device | Available today | Start here |
 | --- | --- | --- |
-| Mac with Apple Silicon | Standalone app, macOS 13.5+ | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-arm64.zip) · [Installation guide](docs/en/desktop.md) |
-| Mac with Intel | Standalone app, macOS 13.5+ | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-x64.zip) · [Installation guide](docs/en/desktop.md) |
-| Windows 10/11, 64-bit Intel/AMD | Standalone portable app | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-windows-x64.zip) · [Installation guide](docs/en/desktop.md#windows-download-and-open) |
+| Mac with Apple Silicon | Standalone app, macOS 13.5+ | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.2/Banana-Studio-0.1.2-macos-arm64.zip) · [Installation guide](docs/en/desktop.md) |
+| Mac with Intel | Standalone app, macOS 13.5+ | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.2/Banana-Studio-0.1.2-macos-x64.zip) · [Installation guide](docs/en/desktop.md) |
+| Windows 10/11, 64-bit Intel/AMD | Standalone portable app | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.2/Banana-Studio-0.1.2-windows-x64.zip) · [Installation guide](docs/en/desktop.md#windows-download-and-open) |
 | Other computers, phones and tablets | Web version in a browser | Open a deployed workspace; its owner manages access and provider keys. |
 
 **Desktop quick start:** download → unzip → open (Mac: move to Applications first) → **Provider keys** → add the key for your model → generate. Both standalone apps need **no Supabase, Vercel, Google sign-in or separate Node installation**. The gallery stays on your computer. API keys stay in macOS Keychain or Windows Credential Manager. Keep the app open while jobs run; minimizing is fine. [First-open permissions, updates and backups →](docs/en/desktop.md)
@@ -112,19 +112,22 @@ MiniMax H3 Max modes: **Text to Video Max · Image to Video Max · Reference to 
 
 An API key is a private credential that lets the app use your account with an AI provider. Add only the providers you plan to use. These are the routes implemented **in this app**, not a list of every service offering each model.
 
-| Model or feature | Provider used by this app | Key / server variable |
+| Model or feature | Available providers (Auto priority) | Add any matching key |
 | --- | --- | --- |
-| GPT Image 2.5 — image generation and area edits | OpenAI | `OPENAI_API_KEY` |
-| Nano Banana Pro | fal.ai | `FAL_KEY` |
-| Nano Banana 2.1 | fal.ai | `FAL_KEY` |
+| GPT Image 2.5 — new images and protected area edits | OpenAI → OpenRouter → fal.ai | `OPENAI_API_KEY` / `OPENROUTER_API_KEY` / `FAL_KEY` |
+| Nano Banana Pro / Nano Banana 2.1 | fal.ai → Google Gemini → OpenRouter | `FAL_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` |
 | Claude Opus 5.5 — Enhance, Brainstorm, variations and creative briefs | OpenRouter | `OPENROUTER_API_KEY` |
-| GPT-6.1 Sol — the same text tasks | OpenAI | `OPENAI_API_KEY` |
-| Gemini 3.8 Flash — text tasks and reading YouTube footage | Google Gemini | `GEMINI_API_KEY` |
-| Seedance 2.0 / Seedance 2.5 Relaxed | EvoLink | `EVOLINK_API_KEY` |
+| GPT-6.1 Sol — text features | OpenAI → OpenRouter | `OPENAI_API_KEY` / `OPENROUTER_API_KEY` |
+| Gemini 3.8 Flash — text and YouTube footage analysis | Google Gemini → OpenRouter | `GEMINI_API_KEY` / `OPENROUTER_API_KEY` |
+| Seedance 2.0 / 2.5 | EvoLink → fal.ai → OpenRouter (supported modes) | `EVOLINK_API_KEY` / `FAL_KEY` / `OPENROUTER_API_KEY` |
 | MiniMax H3 Max — text/image/reference to video, extend, lip sync and recast | fal.ai | `FAL_KEY` |
 | YouTube channel/video lookup | Google YouTube Data API v3 | `YOUTUBE_API_KEY` |
 
-The default image model is **GPT Image 2.5**; the default creative text model is **Opus 5.5 / Medium**. This pairing needs OpenAI + OpenRouter keys. Change the text model and thinking level in **AI settings**. Gemini keys alone do not enable the fal.ai image models. Full YouTube analysis needs the YouTube lookup key, Gemini for footage and the chosen creative model's provider. Some video-reference resizing also uses fal.ai. [Key creation links, examples and the complete feature map →](docs/en/models.md)
+**Start with one provider:** an **OpenRouter key** can cover GPT/Nano images, Opus/GPT/Gemini text, footage analysis and supported Seedance video. A **fal.ai key** can cover GPT/Nano images, Seedance and H3 Max video; add a text provider if you want Enhance or Brainstorm. A **Gemini key** can cover Nano images and Gemini text/analysis. You do not need every key. YouTube search/metadata still needs its separate YouTube Data API key.
+
+The default creative model remains **Opus 5.5 / Medium**. Choose models, thinking and **Auto / a specific provider** in **AI settings**. Routes are selected before submission and kept with saved jobs; an uncertain paid request is never resubmitted at another service. Results show their actual provider. Outside an approved edit area, source pixels remain protected on every image route.
+
+OpenRouter Seedance currently supports text, first/last frames and image references in this app; it requires a fixed duration and aspect ratio, and Seedance 2.5 supports 480p/720p there. Use fal.ai or EvoLink for video/audio references, Edit/Extend, Auto duration or 2.5 at 1080p. **Relaxed** is specific to EvoLink. Some reference-video preprocessing also uses fal.ai. [Provider limits, key creation links and examples →](docs/en/models.md)
 
 ## How it is built
 

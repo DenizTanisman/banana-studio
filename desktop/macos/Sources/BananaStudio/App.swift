@@ -63,7 +63,7 @@ final class BananaStudioApp: NSObject, NSApplicationDelegate, WKNavigationDelega
         updater.checkForUpdates(self)
     }
     @objc func showKeys() {
-        let alert = NSAlert(); alert.messageText = "Provider API Keys"; alert.informativeText = "Keys stay in macOS Keychain. Only the local workspace process uses them to call the providers you choose. Blank fields keep existing keys. Remove clears a saved key."
+        let alert = NSAlert(); alert.messageText = "Provider API Keys"; alert.informativeText = "Add only the providers you use. OpenRouter can cover text, images and supported Seedance video; fal.ai covers images and video. Choose Auto or a provider in AI settings. Keys stay in macOS Keychain. Blank fields keep existing keys. Remove clears a saved key."
         alert.addButton(withTitle: "Save"); alert.addButton(withTitle: "Cancel")
         let stack = NSStackView(); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
         var rows: [(ProviderKey, NSSecureTextField, NSButton)] = []

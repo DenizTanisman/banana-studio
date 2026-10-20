@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { OPENROUTER_MODELS } from '../src/lib/providers.js';
 import { applyCors, createUserScopedClient, requireUser } from './_lib/auth.js';
 import { startOpenAIRequest } from './_lib/openaiGuard.js';
 import { createTaskDeadline, waitForTask } from '../src/lib/shared/asyncTask.js';
@@ -22,7 +23,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   catch { return res.status(400).json({ error: 'Invalid JSON body' }); }
   const parts = body?.contents?.parts;
   const usageContext = body?.usageContext;
-  if (body?.model !== OPENROUTER_TEXT_MODEL) return res.status(400).json({ error: 'Unsupported text model' });
+  if (!['anthropic/claude-opus-5.5', 'gpt-6.1-sol', 'gemini-3.8-flash'].includes(body?.model)) return res.status(400).json({ error: 'Unsupported text model' });
+  const model = body.model as string;
+  const upstreamModel = OPENROUTER_MODELS[model];
   const effort = body.reasoningEffort ?? DEFAULT_OPENROUTER_REASONING;
   if (!isOpenRouterReasoningEffort(effort)) return res.status(400).json({ error: 'Unsupported Opus thinking effort.' });
   if (!ACTIONS.includes(usageContext?.action) || typeof usageContext?.prompt !== 'string') return res.status(400).json({ error: 'Invalid text feature.' });
@@ -39,7 +42,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     else if (part?.text == null && !part.fileData && ['image/jpeg', 'image/png', 'image/webp'].includes(part?.inlineData?.mimeType)
       && typeof part.inlineData.data === 'string' && /^[A-Za-z0-9+/]+={0,2}$/.test(part.inlineData.data)) {
       content.push({ type: 'image_url', image_url: { url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}` } });
-    } else return res.status(400).json({ error: 'Opus accepts text and image references. Native video must be read before analysis.' });
+    } else if (model === 'gemini-3.8-flash' && typeof part?.fileData?.fileUri === 'string'
+      && /^https:\/\/www\.youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}$/.test(part.fileData.fileUri)) {
+      content.push({ type: 'video_url', video_url: { url: part.fileData.fileUri } });
+    } else return res.status(400).json({ error: 'This model accepts text and image references. YouTube footage requires Gemini.' });
   }
   const guard = await startOpenAIRequest(req, res, user, 'text', undefined, 'OpenRouter');
   if (!guard) return;
@@ -69,13 +75,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response = await waitForTask(fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST', redirect: 'error',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-OpenRouter-Title': 'Banana Studio' },
-      body: JSON.stringify({ model: OPENROUTER_TEXT_MODEL,
+      body: JSON.stringify({ model: upstreamModel,
         messages: [{ role: 'system', content: analysis
-          ? 'Prepare the requested factual episode analysis using only the verified footage observations. Do not claim to watch a video yourself or invent events, identities, prices, outcomes or timestamps. Return exactly the requested JSON object.'
+          ? 'Prepare the requested factual episode analysis using only the supplied footage or verified observations. Report unavailable footage honestly; never invent events, identities, prices, outcomes or timestamps. Return exactly the requested JSON object.'
           : 'Complete the requested prompt-writing task using the supplied brief and references. Make reasonable creative decisions without follow-up questions. Return only the finished deliverable.' + (usageContext.action === 'brainstorm' ? brainstormOutputInstruction(wardrobe, body.brainstormCount) : '') },
           { role: 'user', content }],
         reasoning: { effort, exclude: true }, max_tokens: 32768, user: user.id,
-        provider: { require_parameters: true },
+        provider: { require_parameters: true, allow_fallbacks: false, ...(model === 'gemini-3.8-flash' ? { only: ['google-ai-studio'] } : {}) },
         ...(format ? { response_format: { type: 'json_schema', json_schema: { name: format.name, strict: format.strict, schema: format.schema } } } : {}),
       }), signal: deadline.signal,
     }), deadline.signal);
@@ -91,36 +97,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (streaming) send({ type: 'status', stage: 'finishing' });
     try {
       const { error } = await waitForTask(createUserScopedClient(req).from('usage_logs').insert({
-        user_id: user.id, action: usageContext.action, model: OPENROUTER_TEXT_MODEL,
-        prompt: usageContext.prompt.slice(0, 500), image_count: 0, estimated_cost: calculateOpenRouterTextCost(data?.usage),
+        user_id: user.id, action: usageContext.action, model,
+        prompt: usageContext.prompt.slice(0, 500), image_count: 0, estimated_cost: calculateOpenRouterTextCost(data?.usage, model),
       }).abortSignal(accounting.signal), accounting.signal);
       usageLogged = !error;
     } catch { usageLoggingPending = true; }
     finally { accounting.dispose(); }
     const choice = data?.choices?.[0];
-    if (choice?.finish_reason !== 'stop') return fail(502, 'Opus 5.5 yanıtı tamamlanamadı. İsteği kısaltıp yeniden dene.');
-    if (choice?.message?.refusal) return fail(422, 'Opus 5.5 bu isteği yanıtlayamadı.');
+    if (choice?.finish_reason !== 'stop') return fail(502, 'Model yanıtı tamamlanamadı. İsteği kısaltıp yeniden dene.');
+    if (choice?.message?.refusal) return fail(422, 'Model bu isteği yanıtlayamadı.');
     let text = choice?.message?.role === 'assistant' && typeof choice.message.content === 'string' ? choice.message.content : '';
-    if (!text.trim()) return fail(502, 'Opus 5.5 boş yanıt döndürdü. Yeniden dene.');
+    if (!text.trim()) return fail(502, 'Model boş yanıt döndürdü. Yeniden dene.');
     if (usageContext.action === 'brainstorm') {
       const normalized = normalizeBrainstormOutput(text, wardrobe, body.brainstormCount);
       console.info(`[openrouter-brainstorm] id=${guard.id} expected=${body.brainstormCount ?? 'legacy'} accepted=${normalized ? JSON.parse(normalized).length : 0} thinking=${effort}`);
-      if (!normalized) return fail(502, 'Opus 5.5 fikirleri beklenen biçimde döndürmedi. Yeniden dene.');
+      if (!normalized) return fail(502, 'Model fikirleri beklenen biçimde döndürmedi. Yeniden dene.');
       text = normalized;
     }
     if (analysis) {
       let value: any;
       try { value = JSON.parse(text); } catch { /* checked below */ }
       if (typeof value?.videoAvailable !== 'boolean' || typeof value.brief !== 'string' || typeof value.premise !== 'string'
-        || typeof value.limitation !== 'string' || !Array.isArray(value.evidence)) return fail(502, 'Opus 5.5 video analizini beklenen biçimde döndürmedi.');
+        || typeof value.limitation !== 'string' || !Array.isArray(value.evidence)) return fail(502, 'Model video analizini beklenen biçimde döndürmedi.');
     }
-    const result = { text, candidates: null, usageMetadata: { openrouterUsage: data.usage ?? null, usageLogged, usageLoggingPending }, requestId: guard.id };
+    const result = { text, candidates: null, provider: 'openrouter', providerModel: upstreamModel, usageMetadata: { provider: 'openrouter', openrouterUsage: data.usage ?? null, usageLogged, usageLoggingPending }, requestId: guard.id };
     outcome = 'completed'; await guard.finish('completed', requestId, providerStatus);
     if (streaming) { send({ type: 'result', result }); return res.end(); }
     return res.status(200).json(result);
   } catch (error: any) {
     const timeout = error?.name === 'TimeoutError' || error?.name === 'AbortError';
-    return fail(timeout ? 504 : 502, timeout ? 'Opus 5.5 yanıt süresi aşıldı. İsteği kısaltıp yeniden dene.' : openRouterErrorMessage());
+    return fail(timeout ? 504 : 502, timeout ? 'Model yanıt süresi aşıldı. İsteği kısaltıp yeniden dene.' : openRouterErrorMessage());
   } finally {
     deadline.dispose(); clearInterval(heartbeat); res.off?.('close', close);
     await guard.finish(outcome, requestId, providerStatus);

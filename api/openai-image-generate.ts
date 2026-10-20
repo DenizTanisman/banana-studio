@@ -1,4 +1,6 @@
-import { missingProviderMessage } from './_lib/providerConfiguration.js';
+import { chooseProvider } from './_lib/providerConfiguration.js';
+import { PROVIDER_KEYS, PROVIDER_LABELS, type AIProvider } from '../src/lib/providers.js';
+import { imageProviderModel, requestImage } from './_lib/imageProviders.js';
 import { isReferenceUrl, providerImageUrl } from './_lib/providerMedia.js';
 import { getPersonId, cleanPersonName } from '../src/lib/references/personReferences.js';
 import { normalizePromptPreparation } from '../src/lib/prompts/promptPreparation.js';
@@ -42,24 +44,25 @@ type ImageExecutionContext = {
  * admission and must atomically mark dispatch immediately before the paid call. */
 export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,context:ImageExecutionContext) {
   const { user,db } = context;
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) return res.status(503).json({ error: missingProviderMessage('OpenAI', 'OPENAI_API_KEY') });
 
   let body: any;
   try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; }
   catch { return res.status(400).json({ error: 'Invalid JSON body' }); }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'Invalid request body' });
-  if (body.model !== SUNBURST_MODEL) return res.status(400).json({ error: 'Unsupported OpenAI image model' });
+  if (!['gpt-image-2.5-sunburst','gemini-3-pro-image-preview','gemini-nano-banana-2.1'].includes(body.model)) return res.status(400).json({ error: 'Unsupported OpenAI image model' });
   if (typeof body.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(body.id)) return res.status(400).json({ error: 'Invalid generation ID' });
   if (typeof body.prompt !== 'string' || !body.prompt.trim() || body.prompt.length > 32000) return res.status(400).json({ error: 'Prompt must contain 1–32,000 characters.' });
   if (!['1:1', '4:3', '3:4', '16:9', '9:16'].includes(body.aspectRatio) || !['1K', '2K', '4K'].includes(body.resolution)) return res.status(400).json({ error: 'Invalid ratio or resolution.' });
   if (body.options != null && (typeof body.options !== 'object' || Array.isArray(body.options))) return res.status(400).json({ error: 'Invalid image options.' });
-  const options = getOpenAIImageOptions(body.options);
+  let provider: AIProvider;
+  try { provider = chooseProvider(body.model, body.provider ?? (context.guard && body.model === SUNBURST_MODEL ? 'openai' : 'auto')); } catch (error) { return res.status(503).json({ error: (error as Error).message }); }
+  const key = process.env[PROVIDER_KEYS[provider]]!;
+  const options = getOpenAIImageOptions(body.model === SUNBURST_MODEL ? body.options : undefined);
   let size = getOpenAIImageSize({ ...body, openaiImageOptions: options });
   const optionError = validateOpenAIImageOptions(options) || validateOpenAIImageSize(size);
   if (optionError) return res.status(400).json({ error: optionError });
   const refs = body.referenceImages ?? [];
-  if (!Array.isArray(refs) || refs.length > 16 || refs.some((r: any) => !r || !isImageUrl(r.data))) return res.status(400).json({ error: 'Provide up to 16 HTTPS reference images.' });
+  if (!Array.isArray(refs) || refs.length > (body.model === SUNBURST_MODEL ? 16 : 14) || refs.some((r: any) => !r || !isImageUrl(r.data))) return res.status(400).json({ error: 'Provide up to 16 HTTPS reference images.' });
   if (refs.some((r: any) => r.isEditSource != null && typeof r.isEditSource !== 'boolean')) return res.status(400).json({ error: 'Invalid edit source role.' });
   if (refs.some((r: any) => r.isThumbnailStyle != null && typeof r.isThumbnailStyle !== 'boolean')) return res.status(400).json({ error: 'Invalid thumbnail style role.' });
   if (refs.some((r: any) => r.editRegion != null && !isValidEditRegion(r.editRegion))) return res.status(400).json({ error: 'Invalid edit area.' });
@@ -80,7 +83,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
   let protectedSource: Awaited<ReturnType<typeof readEditSource>> | undefined;
   let editReference: typeof safeRefs[number] | undefined;
   try {
-    const prepared = prepareSunburstGeneration(body.prompt, safeRefs, { ...body, imageModel: SUNBURST_MODEL, openaiImageOptions: options });
+    const prepared = prepareSunburstGeneration(body.prompt, safeRefs, { ...body, imageModel: body.model, openaiImageOptions: options });
     generationPrompt = prepared.prompt;
     generationReferences = prepared.referenceImages;
     const edit = getSunburstEditIntent(body.prompt, safeRefs, body);
@@ -89,7 +92,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
       if (!isValidEditRegion(editReference.editRegion)) return res.status(400).json({ error: EDIT_REGION_REQUIRED });
       protectedSource = await readEditSource(db, editReference.data, user.id);
       size = `${protectedSource.info.width}x${protectedSource.info.height}`;
-      const sourceSizeError = validateOpenAIImageSize(size);
+      const sourceSizeError = body.model === SUNBURST_MODEL ? validateOpenAIImageSize(size) : null;
       if (sourceSizeError) return res.status(400).json({ error: `Protected edits use the source canvas (${size}). ${sourceSizeError}` });
       generationPrompt += '\n\n' + describeEditRegion(editReference.editRegion, protectedSource.info.width, protectedSource.info.height);
     } else if (safeRefs.some(ref => ref.editRegion)) {
@@ -108,17 +111,17 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
   // An INSERT also makes duplicate submissions with the same ID fail before
   // OpenAI is charged; no upsert may take over another user's generation.
   const startedAt = Date.now();
-  const metadata: Record<string, unknown> = { originalPrompt: body.originalPrompt, youtubeSource: normalizeYouTubeSource(body.youtubeSource),
+  const metadata: Record<string, unknown> = { generationProvider: provider, providerModel: imageProviderModel(provider, body.model, generationReferences.length > 0), originalPrompt: body.originalPrompt, youtubeSource: normalizeYouTubeSource(body.youtubeSource),
     promptPreparation: normalizePromptPreparation(body.promptPreparation),
-    openaiImageOptions: protectedSource ? { ...options, size: 'custom', width: protectedSource.info.width, height: protectedSource.info.height } : options,
+    openaiImageOptions: body.model !== SUNBURST_MODEL ? undefined : protectedSource ? { ...options, size: 'custom', width: protectedSource.info.width, height: protectedSource.info.height } : options,
     openaiStartedAt: startedAt, generationStartedAt: startedAt,
     imagePromptCategory: body.imagePromptCategory, imageGenerationPrompt: generationPrompt,
-    imageGenerationReferenceIds: generationReferences.map(ref => ref.id), imageRequestedSize: size, openaiAuditId: guard.id };
+    imageGenerationReferenceIds: generationReferences.map(ref => ref.id), imageRequestedSize: body.model === SUNBURST_MODEL || protectedSource ? size : `${body.resolution} · ${body.aspectRatio}`, openaiAuditId: guard.id };
   if (editReference?.id.startsWith('gallery-')) metadata.imageEditSourceId = editReference.id.slice(8);
   try {
     const { error: insertError } = context.dispatch ? { error:null } : await db.from('generations').insert({
       id: body.id, user_id: user.id, prompt: storedPrompt, url: '', type: 'image',
-      aspect_ratio: body.aspectRatio, resolution: body.resolution, image_model: SUNBURST_MODEL,
+      aspect_ratio: body.aspectRatio, resolution: body.resolution, image_model: body.model,
       created_at: startedAt, folder_id: body.folderId || null, is_favorite: false,
       reference_images: safeRefs.map(ref => ({ ...ref, data: canonicalMediaUrl(ref.data) })), status: 'processing', metadata,
     });
@@ -129,8 +132,8 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
       });
     }
 
-    const input: Record<string, unknown> = {
-      model: SUNBURST_MODEL, prompt: generationPrompt, n: 1, size, quality: options.quality,
+    const input: Record<string, unknown> = { resolution: body.resolution, aspect_ratio: body.aspectRatio,
+      model: body.model, prompt: generationPrompt, n: 1, size, quality: options.quality,
       background: options.background, output_format: options.outputFormat, moderation: options.moderation,
       user: user.id,
     };
@@ -142,10 +145,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
       return res.status(409).json({ error:'The saved worker claim is no longer active. No provider request was sent.' });
     }
     outcome = 'failed';
-    const response = await fetch(`https://api.openai.com/v1/images/${generationReferences.length ? 'edits' : 'generations'}`, {
-      method: 'POST', redirect: 'error', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-Client-Request-Id': guard.id },
-      body: JSON.stringify(input), signal: AbortSignal.timeout(250_000),
-    });
+    const response = await requestImage(provider, body.model, input, db, key, guard.id);
     providerStatus = response.status;
     const data = await response.json().catch(() => null);
     metadata.openaiRequestId = response.headers.get('x-request-id');
@@ -153,7 +153,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
       providerErrorCode = safeOpenAIErrorCode(data);
       const quotaWait = response.status===429 && providerErrorCode==='insufficient_quota' && data?.usage==null
         && (data?.data==null || Array.isArray(data.data)&&data.data.length===0);
-      const retryAfter = quotaWait ? 3600 : imageRateLimitDelay(response,data);
+      const retryAfter = provider === 'openai' ? (quotaWait ? 3600 : imageRateLimitDelay(response,data)) : null;
       if (retryAfter && context.deferRateLimit) {
         outcome = 'rejected';
         let deferred = false;
@@ -163,27 +163,28 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
         return res.status(202).json({ code:deferred?'IMAGE_PROVIDER_RATE_WAIT':'IMAGE_PROVIDER_RATE_STATE_UNKNOWN',retryAfter });
       }
       metadata.openaiError = { status: response.status, ...(providerErrorCode ? { code: providerErrorCode } : {}) };
-      const error = new Error(openAIErrorMessage(response.status, providerErrorCode)) as Error & { status?: number };
+      const error = new Error(provider === 'openai' ? openAIErrorMessage(response.status, providerErrorCode) : `${PROVIDER_LABELS[provider]} rejected the image request (${response.status}). Check the prompt, references, model access and account credit.`) as Error & { status?: number };
       error.status = response.status;
       throw error;
     }
-    const usd = calculateOpenAIImageCost(data?.usage);
+    const usd = provider === 'openai' ? calculateOpenAIImageCost(data?.usage) : typeof data?.usage?.cost === 'number' && Number.isFinite(data.usage.cost) && data.usage.cost >= 0 ? data.usage.cost : null;
     metadata.openaiUsage = data?.usage ?? null;
     metadata.generationCost = usd == null ? null : { usd, source: 'provider_usage' };
     // Log returned usage before storage, since a storage failure doesn't undo
     // the provider charge. Missing usage remains NULL, never a guessed price.
     const { error: usageError } = await db.from('usage_logs').insert({
-      user_id: user.id, action: 'generate', model: SUNBURST_MODEL,
+      user_id: user.id, action: 'generate', model: body.model,
       prompt: storedPrompt.slice(0, 500), image_count: Array.isArray(data?.data) ? data.data.length : 0, estimated_cost: usd,
     });
     if (usageError) metadata.usageLogError = 'Usage could not be recorded in the admin log.';
     const b64 = data?.data?.[0]?.b64_json;
-    if (typeof b64 !== 'string' || !b64) throw new SavedImageError('OpenAI returned no image. Check usage before generating again.');
-    const outputFormat = protectedSource ? 'png' : ['png', 'jpeg', 'webp'].includes(data.output_format) ? data.output_format : options.outputFormat;
+    if (typeof b64 !== 'string' || !b64) throw new SavedImageError(`${PROVIDER_LABELS[provider]} returned no image. Check usage before generating again.`);
+    const returnedFormat = data?.data?.[0]?.media_type?.split('/')[1] || data.output_format;
+    const outputFormat = protectedSource ? 'png' : ['png', 'jpeg', 'webp'].includes(returnedFormat) ? returnedFormat : options.outputFormat;
     let imageBytes = Buffer.from(b64, 'base64');
     if (protectedSource && editReference?.editRegion) {
       const providerOutputSha256 = imageSha256(imageBytes);
-      const result = await compositeProtectedEdit(protectedSource, imageBytes, editReference.editRegion);
+      const result = await compositeProtectedEdit(protectedSource, imageBytes, editReference.editRegion, body.model !== SUNBURST_MODEL);
       imageBytes = result.bytes;
       metadata.imageEditProtection = { version: 1, sourceReferenceId: editReference.id, sourceSha256: protectedSource.sha256,
         sourceSize: size, region: editReference.editRegion, pixelRegion: result.bounds, preservedOutsideRegion: true, providerOutputSha256 };
@@ -201,7 +202,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
     if (uploadError && !await readStoredImage(db.storage.from('media'), storagePath, metadata.imageOutputSha256 as string)) {
       metadata.storageError = { status: uploadError.statusCode || uploadError.status || null, message: 'Image storage failed.' };
       console.warn('OpenAI image storage failed', body.id, { ...metadata.storageError as object, bytes: imageBytes.length, elapsedMs: Date.now() - startedAt });
-      throw new SavedImageError('OpenAI generated the image, but saving it failed. Usage has been recorded; retrying generation may incur another charge.');
+      throw new SavedImageError(`${PROVIDER_LABELS[provider]} generated the image, but saving it failed. Usage has been recorded; retrying generation may incur another charge.`);
     }
     const url = await signedMediaUrl(db.storage.from('media'), storagePath);
     metadata.generationCompletedAt = Date.now();
@@ -215,8 +216,8 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
     return res.status(200).json({ id: body.id, url, storagePath, referenceImages: safeRefs, metadata });
   } catch (error: any) {
     const message = error?.name === 'TimeoutError'
-      ? 'OpenAI exceeded the request time limit. It may still have billed this request. Check usage before generating again.'
-      : error instanceof SavedImageError ? error.message : openAIErrorMessage(error?.status, providerErrorCode);
+      ? `${PROVIDER_LABELS[provider]} exceeded the request time limit. It may still have billed this request. Check usage before generating again.`
+      : error instanceof SavedImageError ? error.message : provider === 'openai' ? openAIErrorMessage(error?.status, providerErrorCode) : `${PROVIDER_LABELS[provider]} could not finish the image. Check provider usage before submitting again.`;
     console.warn('OpenAI image request failed', { id: body.id, auditId: guard.id, status: providerStatus ?? null,
       code: providerErrorCode ?? null, elapsedMs: Date.now() - startedAt });
     await db.from('generations').update({ status: 'failed', metadata: { ...metadata, error: message } }).eq('id', body.id).eq('user_id', user.id);

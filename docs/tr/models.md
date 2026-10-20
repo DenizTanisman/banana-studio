@@ -6,44 +6,52 @@
 
 Tablolar uygulamanın kullandığı bağlantıları gösterir. Model erişimi, fiyat ve kotalar sağlayıcı tarafında değişebilir. Paket kredi veya önceden ayarlanmış özel hesap içermez.
 
-## Görsel üretimi ve korumalı alan düzenleme
+## Bütün servislerde hesap açman gerekmez
 
-| Model menüsündeki ad | Sağlayıcı | Mac'teki kutu | Sunucu ortam değişkeni |
+Mac veya Windows'ta **Provider keys** bölümüne kullanacağın **bir veya birkaç** anahtarı ekle. **AI settings → Provider routing** içinde model başına **Auto** veya belirli sağlayıcı seç. Üretim barında ve edit prompt kutusunda da seçim görünür. Auto, tabloda soldan sağa doğru tanımlı anahtarı olan ilk bağlantıyı **istek gönderilmeden önce** seçer. Eksik anahtarlar zorunlu kurulum adımı değildir.
+
+Kabul edilen görsel işi, sayfa yenilense veya uygulama yeniden açılsa da sağlayıcısını korur. Ayar değişikliği yeni işleri etkiler. Anahtarı kaldırmak işi başka serviste tekrar başlatmaz; kurtarmak için ilk sağlayıcının anahtarını geri ekle. Sonucu belirsiz ücretli istekler otomatik tekrarlanmaz. Yönlendirme tercihleri masaüstünde yerel veritabanında, webde bu tarayıcıda hesap başına saklanır.
+
+## Modeller ve bağlantılar
+
+| Model / özellik | Auto önceliği | Uygun anahtarlardan biri |
+| --- | --- | --- |
+| GPT Image 2.5 | OpenAI → OpenRouter → fal.ai | `OPENAI_API_KEY` / `OPENROUTER_API_KEY` / `FAL_KEY` |
+| Nano Banana Pro / 2.1 | fal.ai → Google Gemini → OpenRouter | `FAL_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` |
+| Opus 5.5 — varsayılan yaratıcı model, Medium | OpenRouter | `OPENROUTER_API_KEY` |
+| GPT-6.1 Sol — Enhance, Brainstorm, varyasyon | OpenAI → OpenRouter | `OPENAI_API_KEY` / `OPENROUTER_API_KEY` |
+| Gemini 3.8 Flash — metin ve video analizi | Google Gemini → OpenRouter | `GEMINI_API_KEY` / `OPENROUTER_API_KEY` |
+| Seedance 2.0 / 2.5 | EvoLink → fal.ai → OpenRouter | `EVOLINK_API_KEY` / `FAL_KEY` / `OPENROUTER_API_KEY` |
+| H3 Max — Text/Image/Reference to Video, Extend, Lip Sync, Recast | fal.ai | `FAL_KEY` |
+| Gerektiğinde video referansı ön işlemi | fal.ai | `FAL_KEY` |
+| YouTube arama / kanal ve video bilgileri | YouTube Data API v3 | `YOUTUBE_API_KEY` |
+
+Üç görsel sağlayıcısı da referanslı yeni üretimi destekler. Referans eklemek kendiliğinden korumalı editi açmaz: bunun için **Edit area** seç. Son seçili alan kaynak görsele yerleştirilir; dışındaki pikseller sağlayıcıdan bağımsız olarak korunur. Nano'nun çözünürlük katmanlarından gelen çıktı, oranı kaynakla uyuşuyorsa birleştirmeden önce kaynak boyutuna ölçeklenebilir; farklı oran reddedilir. Sağlayıcının referans görsel kabul eden API adı “edit” olabilir; bu, uygulamada otomatik alan editi anlamına gelmez.
+
+Düşünme seviyesi AI settings'ten seçilir. Yalnızca fal.ai anahtarı Enhance/Brainstorm açmaz; artık desteklenmeyen Any LLM bağlantısını kullanmıyoruz. Anthropic anahtarı OpenRouter anahtarı değildir. Anahtarın model erişimi ve API bakiyesi bulunmalıdır.
+
+## Video farkları
+
+| İşlem | EvoLink | fal.ai | Bu uygulamada OpenRouter |
 | --- | --- | --- | --- |
-| GPT Image 2.5 | OpenAI | OpenAI | `OPENAI_API_KEY` |
-| Nano Banana Pro | fal.ai | fal.ai | `FAL_KEY` |
-| Nano Banana 2.1 | fal.ai | fal.ai | `FAL_KEY` |
+| Metinden video | Var | Var | Var |
+| First frame / first + last frame | Var | Var | Var |
+| Görsel referansları | Var | Var | Var, en fazla 9 |
+| Video / ses referansları | Var | Var | Açık değil |
+| Seedance 2.5 Edit / Extend | Var | Var | Açık değil |
+| Seedance 2.5 Auto süre | Var | Var | Sabit 4–30 saniye |
+| Seedance 2.5 çözünürlük | 480p / 720p / 1080p | 480p / 720p / 1080p | 480p / 720p |
+| Seedance 2.0 sabit süre | 4–15 saniye | 4–15 saniye | 4–15 saniye |
 
-Nano Banana Pro ve 2.1 mevcut görsel üretim akışında fal.ai kullanır. Yalnızca `GEMINI_API_KEY` eklemek bunları açmaz. GPT Image 2.5 doğrudan OpenAI'a gider. Eski kayıtlarda emekli model adları görünebilir; yeni istekleri mevcut model menüsü ve bağlantısı belirler.
+**Seedance 2.5 Relaxed**, mevcut EvoLink bağlantısının özelliğidir. fal.ai ve OpenRouter standart Seedance 2.5 kullanır; fiyatları, izinleri ve limitleri kendilerine aittir. H3 Max yalnızca fal.ai kullanır; benzer isimli başka MiniMax modeliyle değiştirilmez. Desteklenmeyen seçenekler üretimden önce kontrol edilir; başka modele sessiz geçiş yapılmaz.
 
-## Enhance, Brainstorm ve varyasyonlar
+Video analizi gerçek YouTube görüntüsünü doğrudan Gemini veya OpenRouter'ın Google AI Studio bağlantısıyla okur. Opus/GPT bu gözlemlerden yaratıcı brief hazırlayabilir; videoyu kendileri izlemiş gibi gösterilmezler. YouTube arama/bilgileri için ayrı **YouTube Data API v3** anahtarı gerekir. Google OAuth bilgileri farklıdır ve yalnızca web girişinde kullanılır.
 
-| Metin modeli | Sağlayıcı | Mac'teki kutu | Değişken |
-| --- | --- | --- | --- |
-| Claude Opus 5.5 — başlangıç varsayılanı, Medium | OpenRouter | OpenRouter | `OPENROUTER_API_KEY` |
-| GPT-6.1 Sol | OpenAI | OpenAI | `OPENAI_API_KEY` |
-| Gemini 3.8 Flash | Google Gemini | Google Gemini | `GEMINI_API_KEY` |
-
-Modeli ve düşünme seviyesini **AI settings** bölümünden seç. Anthropic hesabının anahtarı OpenRouter anahtarı değildir. Anahtarı kaydettikten sonra da model erişimi ve sağlayıcı bakiyesi gerekir.
-
-## Video ve YouTube
-
-| Özellik | Gereken sağlayıcı / anahtar |
-| --- | --- |
-| Seedance 2.0 / Seedance 2.5 Relaxed | EvoLink — `EVOLINK_API_KEY` |
-| MiniMax H3 Max: Text to Video, Image to Video, Reference to Video, Extend, Lip Sync, Recast | fal.ai — `FAL_KEY` |
-| Gerektiğinde video referansı boyutlandırma/hazırlama | Üretim sağlayıcısına ek olarak fal.ai — `FAL_KEY` |
-| YouTube kanal/video araması ve bilgileri | Google YouTube Data API v3 — `YOUTUBE_API_KEY` |
-| YouTube görüntüsünü okuma | Gemini — `GEMINI_API_KEY` |
-| Son yaratıcı video brief'i ve Brainstorm | Seçili metin modelinin sağlayıcı anahtarı |
-
-Tam varsayılan YouTube akışı için **YouTube Data API + Gemini + OpenRouter**, ardından görseli üretecek sağlayıcı gerekir. Gemini videodan bilgi çıkarırken kendisine ayrılan analiz ayarını kullanır; yaratıcı düşünme tercihi seçili yaratıcı metin modelini yönetir.
-
-Web girişindeki Google OAuth client ID/secret, YouTube ve Gemini API anahtarlarından ayrıdır. Masaüstü uygulamasına Google OAuth kurman gerekmez.
+Resmî bağlantılar: [OpenRouter görsel](https://openrouter.ai/docs/guides/overview/multimodal/image-generation), [video üretimi](https://openrouter.ai/docs/guides/overview/multimodal/video-generation), [video okuma](https://openrouter.ai/docs/guides/overview/multimodal/videos), [fal Seedance 2.5](https://fal.ai/models/bytedance/seedance-2.5/reference-to-video/api), [fal GPT Image 2.5](https://fal.ai/models/openai/gpt-image-2.5/sunburst/text-to-image/api).
 
 ## Anahtar oluştur
 
-Sağlayıcıda hesap aç, anahtar panelinden yeni anahtar oluştur ve Mac'te **Provider keys** içindeki doğru kutuya yapıştır. Web sürümünde kurulumu yapan kişi aynı değeri Vercel'de yukarıdaki isimle ortam değişkenine kaydeder, ardından yeniden deploy eder.
+Sağlayıcıda hesap aç, anahtar panelinden yeni anahtar oluştur ve Mac veya Windows'ta **Provider keys** içindeki doğru kutuya yapıştır. Web sürümünde kurulumu yapan kişi aynı değeri Vercel'de yukarıdaki isimle ortam değişkenine kaydeder, ardından yeniden deploy eder.
 
 | Sağlayıcı | Başlangıç | Resmî açıklama |
 | --- | --- | --- |
@@ -60,17 +68,17 @@ YouTube için kendi Google Cloud projeni oluştur/seç, **YouTube Data API v3** 
 
 | İsteğin | Ekle ve seç |
 | --- | --- |
-| Promptu kendim yazıp yalnızca GPT görsel üretmek | OpenAI anahtarı; GPT Image 2.5; Enhance/Brainstorm zorunlu değil |
-| GPT görsel + GPT metin desteği | OpenAI anahtarı; GPT Image 2.5 + AI settings'te GPT-6.1 Sol; hesabının model erişimi olmalı |
-| Varsayılan görsel/yaratıcı ikili | OpenAI + OpenRouter; GPT Image 2.5 + Opus 5.5 / Medium |
-| Nano Banana + Gemini metin desteği | fal.ai + Gemini; Nano Banana Pro/2.1 + Gemini 3.8 Flash |
-| H3 Max video | fal.ai; Enhance kullanırsan metin sağlayıcısı da |
-| Seedance video | EvoLink; video referansı hazırlama gerekirse fal.ai; Enhance için metin sağlayıcısı |
+| Görsel + metin + desteklenen video için tek AI hesabı | OpenRouter; GPT/Nano görsel, Opus/GPT/Gemini metin, desteklenen Seedance işlemleri |
+| Promptu kendim yazıp görsel/video üretmek | fal.ai; GPT/Nano, Seedance veya H3 Max; metin anahtarı gerekmez |
+| Nano görsel + Gemini Enhance/Brainstorm | Gemini; metin modeli olarak Gemini 3.8 Flash seç |
+| Doğrudan GPT görsel + GPT metin | OpenAI; GPT Image 2.5 + GPT-6.1 Sol |
+| YouTube analizi ve yeni kapak fikirleri | OpenRouter + YouTube Data API; desteklenen görsel bağlantısını veya ek sağlayıcını kullan |
+| Mevcut ayrı servisli kurulum | Anahtarların kalabilir; Auto mevcut ana sağlayıcı varsa onu seçer, tercihini ayrıca sabitleyebilirsin |
 
 ## Maliyet ve anahtar güvenliği
 
 Uygulamadaki tahmin sağlayıcı bakiyesi veya fatura değildir. Metin düşünmesi, referanslar, kalite, video süresi ve ön işlem ayrıca maliyete etki edebilir. Harcama sınırlarını sağlayıcılardan belirle, kullanım panellerini takip et.
 
-Anahtarlar masaüstünde **macOS Anahtar Zinciri'ne**, webde **sunucu ortam değişkenlerine** aittir. Prompt, ekran görüntüsü, GitHub issue'su, public repo veya `VITE_*` değişkenine koyma. Üretim için yönetici seviyesinde faturalama anahtarları gerekmez. `FAL_ADMIN_KEY`, `OPENAI_ADMIN_KEY` ve `OPENAI_PROJECT_ID`, web sürümünün isteğe bağlı faturalama raporu ayarlarıdır.
+Anahtarlar masaüstünde **macOS Anahtar Zinciri / Windows Credential Manager'a**, webde **sunucu ortam değişkenlerine** aittir. Prompt, ekran görüntüsü, GitHub issue'su, public repo veya `VITE_*` değişkenine koyma. Üretim için yönetici seviyesinde faturalama anahtarları gerekmez. `FAL_ADMIN_KEY`, `OPENAI_ADMIN_KEY` ve `OPENAI_PROJECT_ID`, web sürümünün isteğe bağlı faturalama raporu ayarlarıdır.
 
-Geliştiriciler için doğruluk kaynağı: [model seçenekleri](../../src/types.ts), [görsel yönlendirme](../../src/services/geminiService.ts), [video yönlendirme](../../src/services/runwayService.ts), [YouTube analizi](../../src/services/youtubeBriefService.ts), [yerel anahtar alanları](../../desktop/macos/Sources/BananaStudio/KeyVault.swift).
+Geliştiriciler için doğruluk kaynağı: [sağlayıcı kaydı](../../src/lib/providers.ts), [model seçenekleri](../../src/types.ts), [görsel yönlendirme](../../src/services/geminiService.ts), [video yönlendirme](../../src/services/runwayService.ts), [YouTube analizi](../../src/services/youtubeBriefService.ts), [yerel anahtar alanları](../../desktop/macos/Sources/BananaStudio/KeyVault.swift).

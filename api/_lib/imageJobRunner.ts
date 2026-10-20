@@ -54,7 +54,7 @@ const observeDispatchedJob = async (db:any,job:ImageJobMessage,claim:any) => {
 
 export const runImageJob = async (db:any,job:ImageJobMessage) => {
   if (!job || !/^[a-zA-Z0-9_-]{1,128}$/.test(job.id) || !/^[0-9a-f-]{36}$/i.test(job.userId)) return;
-  if (process.env.OPENAI_ENABLED==='false' || (process.env.VERCEL_ENV && process.env.VERCEL_ENV!=='production')) throw new ImageJobWait(60);
+  if ((process.env.VERCEL_ENV && process.env.VERCEL_ENV!=='production')) throw new ImageJobWait(60);
   const token=randomUUID();
   const claim=await rpc(db,'claim_image_job',{p_id:job.id,p_user_id:job.userId,p_claim:token});
   if (claim?.action==='stop') return;

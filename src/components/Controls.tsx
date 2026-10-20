@@ -1,3 +1,5 @@
+import { useProviderRoute, ProviderRouteControl } from './ProviderRoutingSettings';
+import { seedanceProviderError } from '../lib/video/seedanceProviders';
 import { SavedReferenceImages } from './SavedReferenceImages';
 import { getClipboardImages } from '../lib/references/clipboardImages';
 import { displayReferencePrompt, storeReferencePrompt } from '../lib/references/dynamicReferences';
@@ -1757,9 +1759,10 @@ export const Controls: React.FC<ControlsProps> = ({
 
   const imageModelOptions = IMAGE_MODEL_OPTIONS;
   const selectedVideoModel = config.videoModel || DEFAULT_VIDEO_MODEL;
+  const providerRoute = useProviderRoute(config.mode === 'video' ? selectedVideoModel : config.imageModel);
   const selectedVideoOperation = config.videoOperation || 'generate';
   const selectedVideoIntent = getVideoPromptIntent(config);
-  const videoModelOptions = VIDEO_MODEL_OPTIONS;
+  const videoModelOptions = VIDEO_MODEL_OPTIONS.map(option => option.value === 'seedance-2.5' && providerRoute.provider !== 'evolink' ? { ...option, label: 'Seedance 2.5' } : option);
   const isH3ImageToVideo = h3UsesImageFrames && config.referenceImages.length > 0;
   const isSeedance25FrameToVideo = selectedVideoModel === 'seedance-2.5'
     && selectedVideoOperation === 'generate'
@@ -1767,7 +1770,7 @@ export const Controls: React.FC<ControlsProps> = ({
     && config.referenceImages.every(image => image.isFirstFrame || image.isLastFrame)
     && currentReferenceVideos.length === 0
     && (config.referenceAudios?.length || 0) === 0;
-  const usesSourceFrameAspectRatio = isH3ImageToVideo || (isH3VideoConfig && h3State.mode === 'reference_to_video' && !!config.h3MaxOptions?.startImageId) || isSeedance25FrameToVideo;
+  const usesSourceFrameAspectRatio = isH3ImageToVideo || (isH3VideoConfig && h3State.mode === 'reference_to_video' && !!config.h3MaxOptions?.startImageId) || (isSeedance25FrameToVideo && providerRoute.provider !== 'openrouter');
   const hasSeedanceFrameRoles = config.referenceImages.some(image => image.isFirstFrame || image.isLastFrame);
   const canAssignSeedanceFrames = config.referenceImages.length > 0 && config.referenceImages.length <= 2
     && currentReferenceVideos.length === 0 && currentReferenceAudios.length === 0
@@ -1779,10 +1782,10 @@ export const Controls: React.FC<ControlsProps> = ({
       referenceImages: input === 'frames'
         ? assignSeedanceFrames(current.referenceImages)
         : current.referenceImages.map(image => ({ ...image, isFirstFrame: false, isLastFrame: false })),
-      videoAspectRatio: input === 'frames' ? 'adaptive' : current.videoAspectRatio,
+      videoAspectRatio: input === 'frames' && providerRoute.provider !== 'openrouter' ? 'adaptive' : current.videoAspectRatio,
     }));
   };
-  const videoOperationOptions = selectedVideoModel === 'seedance-2.0'
+  const videoOperationOptions = (selectedVideoModel === 'seedance-2.0'
     ? [
         { label: 'Generate', value: 'generate' },
         { label: 'Ref Edit', value: 'reference_edit' },
@@ -1793,7 +1796,7 @@ export const Controls: React.FC<ControlsProps> = ({
         { label: 'Edit', value: 'edit' },
         { label: 'Continue', value: 'continue', disabled: !currentReferenceVideos.length },
         { label: 'Extend', value: 'extend' },
-      ];
+      ]).map(option => providerRoute.provider === 'openrouter' && option.value !== 'generate' ? { ...option, disabled: true } : option);
   const aspectRatioOptions = [ { label: '1:1', value: '1:1' }, { label: '3:4', value: '3:4' }, { label: '4:3', value: '4:3' }, { label: '9:16', value: '9:16' }, { label: '16:9', value: '16:9' } ];
   const resolutionOptions = [ { label: '1K', value: '1K' }, { label: '2K', value: '2K' }, { label: '4K', value: '4K' } ];
   const videoAspectRatioOptions = usesSourceFrameAspectRatio
@@ -1801,15 +1804,15 @@ export const Controls: React.FC<ControlsProps> = ({
     : selectedVideoModel === 'minimax-h3'
       ? h3State.capabilities.aspectRatios.map(value => ({ label: value === 'adaptive' || value === 'auto' ? 'Source / adaptive' : value, value: value === 'auto' ? 'adaptive' : value }))
       : selectedVideoOperation === 'generate' || selectedVideoOperation === 'reference_edit'
-        ? VIDEO_ASPECT_RATIO_OPTIONS.map(o => ({ label: o.label, value: o.value }))
+        ? VIDEO_ASPECT_RATIO_OPTIONS.filter(o => providerRoute.provider !== 'openrouter' || o.value !== 'adaptive').map(o => ({ label: o.label, value: o.value }))
         : [{ label: 'Source', value: 'adaptive' }];
   const videoQualityOptions = selectedVideoModel === 'minimax-h3'
     ? h3State.capabilities.resolutions.map(value => ({ label: value, value: value.toLowerCase() === '2k' ? '2K' : value.toLowerCase() }))
-    : VIDEO_QUALITY_OPTIONS.filter(o => o.value === '480p' || o.value === '720p' || o.value === '1080p').map(o => ({ label: o.label, value: o.value }));
+    : VIDEO_QUALITY_OPTIONS.filter(o => o.value === '480p' || o.value === '720p' || o.value === '1080p' && !(providerRoute.provider === 'openrouter' && selectedVideoModel === 'seedance-2.5')).map(o => ({ label: o.label, value: o.value }));
   const videoDurationOptions = selectedVideoOperation === 'edit'
     ? [{ label: 'Auto (source)', value: '-1' }]
     : [
-        ...(selectedVideoModel === 'seedance-2.5' ? [{ label: 'Auto', value: '-1' }] : []),
+        ...(selectedVideoModel === 'seedance-2.5' && providerRoute.provider !== 'openrouter' ? [{ label: 'Auto', value: '-1' }] : []),
         ...VIDEO_DURATION_OPTIONS
           .filter(o => (selectedVideoModel === 'seedance-2.5' || o.value <= 15)
             && (selectedVideoModel !== 'minimax-h3' || o.value >= 5))
@@ -1829,10 +1832,10 @@ export const Controls: React.FC<ControlsProps> = ({
     // Seedance 2.5's image-to-video endpoint derives framing from its input
     // images. Do not persist a fixed ratio the provider cannot honor. Video
     // Continue keeps fixed ratios because they control last-frame adaptation.
-    if (config.mode === 'video' && isSeedance25FrameToVideo && config.videoAspectRatio !== 'adaptive') {
+    if (config.mode === 'video' && providerRoute.provider !== 'openrouter' && isSeedance25FrameToVideo && config.videoAspectRatio !== 'adaptive') {
       onChange({ ...config, videoAspectRatio: 'adaptive' });
     }
-  }, [config, isSeedance25FrameToVideo, onChange]);
+  }, [config, isSeedance25FrameToVideo, providerRoute.provider, onChange]);
 
   if (isMinimized) {
     return (
@@ -1858,7 +1861,8 @@ export const Controls: React.FC<ControlsProps> = ({
   const requiresSourceVideo = isVideoMode && selectedVideoModel !== 'minimax-h3' && selectedVideoOperation !== 'generate';
   const h3InputError = isH3VideoConfig ? getH3MaxInputError(config) : null;
   const isSunburst = config.imageModel === SUNBURST_MODEL;
-  const modelInputError = h3InputError || sunburstError || (
+  const routeInputError = providerRoute.error || (config.mode === 'video' && selectedVideoModel !== 'minimax-h3' && providerRoute.provider ? seedanceProviderError(providerRoute.provider, { videoModel: selectedVideoModel, mode: selectedVideoOperation === 'edit' ? 'video_edit' : selectedVideoOperation === 'extend' ? 'video_extend' : hasSeedanceFrameRoles ? 'image_to_video' : config.referenceImages.length || currentReferenceVideos.length || currentReferenceAudios.length ? 'reference_to_video' : 'text_to_video', duration: selectedVideoOperation === 'edit' ? -1 : config.videoDuration, quality: config.videoQuality, aspectRatio: config.videoAspectRatio, imageUrls: config.referenceImages.map(() => ''), videoUrls: currentReferenceVideos.map(() => ''), audioUrls: currentReferenceAudios.map(() => ''), referenceEditMode: selectedVideoOperation === 'reference_edit' }) : undefined);
+  const modelInputError = routeInputError || h3InputError || sunburstError || (
     isH3VideoConfig ? null : isVideoMode
       ? requiresSourceVideo && !(config.referenceVideos?.length)
         ? 'Add a source video for this action.'
@@ -1883,12 +1887,12 @@ export const Controls: React.FC<ControlsProps> = ({
     ? sizeAdjustment?.size === getOpenAIImageSize(config) ? sizeAdjustment.text
       : config.referenceImages.some(ref => ref.isEditSource && ref.editRegion) ? 'Only the masked area changes.' : 'Sizes auto-adjust when you finish editing.'
     : undefined;
-  const hasComposerMessages = Boolean(modelInputError || modelInputHint || customSizeHint || hasStaleEnhancedPrompt || isEnhancing || enhanceError || generationError || attachmentError);
-  const imageCostPreview = getImageCostPreview(config, config.count, imageCostHistory);
+  const hasComposerMessages = true; // Provider selection remains visible even when there are no validation messages.
+  const imageCostPreview = getImageCostPreview({ ...config, imageProvider: providerRoute.provider }, config.count, imageCostHistory);
   const imageCostLabel = imageCostPreview.label;
   const brainstormImageCount = brainstormIdeaCount * config.count;
-  const brainstormCostPreview = getImageCostPreview(config, brainstormImageCount, imageCostHistory);
-  const canGenerate = !isDraftLoading && (isVideoMode
+  const brainstormCostPreview = getImageCostPreview({ ...config, imageProvider: providerRoute.provider }, brainstormImageCount, imageCostHistory);
+  const canGenerate = !routeInputError && !isDraftLoading && (isVideoMode
     ? uploadingReferenceVideos === 0 && !hasStaleEnhancedPrompt && (isH3VideoConfig ? !h3InputError : config.prompt.trim().length > 0 && (!requiresSourceVideo || (config.referenceVideos?.length || 0) > 0))
     : !isBrainstormActive && !sunburstError && !hasStaleEnhancedPrompt && (config.prompt.trim().length > 0 || (!isSunburst && config.referenceImages.length > 0)));
   // While jobs run the button keeps its lime surface so another generation can be
@@ -1916,7 +1920,7 @@ export const Controls: React.FC<ControlsProps> = ({
     ? config.referenceVideos[0].duration!
     : 0;
   const videoCost = isVideoMode
-    ? selectedVideoModel === 'minimax-h3' ? estimateH3MaxCost(config) : estimateVideoCost(
+    ? selectedVideoModel === 'minimax-h3' ? estimateH3MaxCost(config) : providerRoute.provider !== 'evolink' ? null : estimateVideoCost(
         selectedVideoModel,
         config.videoQuality,
         selectedVideoOperation === 'edit' ? -1 : config.videoDuration,
@@ -2486,6 +2490,7 @@ export const Controls: React.FC<ControlsProps> = ({
         </div>
 
         {hasComposerMessages && <div role="region" aria-label="Generation messages" data-testid="generation-messages" className="space-y-2 px-1">
+          <ProviderRouteControl model={config.mode === 'video' ? selectedVideoModel : config.imageModel} compact showError={false} />
           {modelInputError && <p role={sunburstError ? 'alert' : 'status'} className="px-1 text-xs leading-5 text-amber-300">{modelInputError}</p>}
           {generationError && generationError !== modelInputError && <p role="alert" className="px-1 text-xs leading-5 text-red-400">{generationError}</p>}
           {attachmentError && <div role="alert" className="flex items-start justify-between gap-3 px-1 text-xs leading-5 text-red-400"><span className="whitespace-pre-line">{attachmentError}</span><button type="button" aria-label="Dismiss attachment message" onClick={() => setAttachmentError(null)} className="shrink-0 rounded p-1 text-gray-400 hover:text-white"><X className="h-3.5 w-3.5" /></button></div>}
@@ -2939,7 +2944,7 @@ export const Controls: React.FC<ControlsProps> = ({
                               <span className="whitespace-nowrap text-[10px] font-medium text-black/70">
                                 +{isVideoMode && videoCost
                                   ? `$${videoCost.usd.toFixed(2)}`
-                                  : imageCostLabel}
+                                  : isVideoMode ? 'Provider usage-based' : imageCostLabel}
                               </span>
                             )}
                           </>
@@ -2953,7 +2958,7 @@ export const Controls: React.FC<ControlsProps> = ({
                               </span>
                               {!hasStaleEnhancedPrompt && (
                                 <span className="whitespace-nowrap text-[10px] font-medium opacity-80">
-                                  {isVideoMode && videoCost ? `~$${videoCost.usd.toFixed(2)}` : imageCostLabel}
+                                  {isVideoMode ? videoCost ? `~$${videoCost.usd.toFixed(2)}` : 'Provider usage-based' : imageCostLabel}
                                 </span>
                               )}
                           </>

@@ -205,6 +205,7 @@ const estimateUsageCost = (
 ): number | null => {
   const metadata = options.usageMetadata;
   const normalizedImageCount = Math.max(0, imageCount);
+  if (options.estimatedCost === null) return null;
   const providedEstimatedCost = toNumber(options.estimatedCost);
   if (providedEstimatedCost > 0) return providedEstimatedCost;
 
@@ -227,6 +228,7 @@ const estimateUsageCost = (
     return perImage * normalizedImageCount;
   }
 
+  if (metadata?.openrouterUsage) return calculateOpenRouterTextCost(metadata.openrouterUsage, model);
   if (model === OPENAI_TEXT_MODEL) return calculateOpenAITextCost(metadata?.openaiUsage);
   if (model === OPENROUTER_TEXT_MODEL) return calculateOpenRouterTextCost(metadata?.openrouterUsage);
 

@@ -1,7 +1,7 @@
 import { supabase } from './authService';
 import { createTaskDeadline, waitForTask } from '../lib/shared/asyncTask';
 import type { OpenAIReasoningEffort } from '../lib/prompts/openaiText';
-import { OPENROUTER_TEXT_MODEL } from '../lib/prompts/openrouterText';
+import { selectProvider } from './providerRouting';
 
 export type TextTaskStage = 'preparing' | 'connecting' | 'generating' | 'finishing';
 export interface TextTaskOptions {
@@ -160,17 +160,27 @@ const generateContent = async (
  * codebase already consumes — but every call is routed through our Vercel
  * function so the API key never reaches the browser.
  */
+const routeTextContent = async (request: GenerateContentRequest, options?: TextTaskOptions) => {
+  const provider = await selectProvider(request.model, options?.signal);
+  const config = request.config as any;
+  const video = (request.contents as any)?.parts?.some((part: any) => part.fileData);
+  const normalized = { ...request,
+    reasoningEffort: request.reasoningEffort || ({ LOW: 'low', MEDIUM: 'medium', HIGH: 'high' } as const)[config?.thinkingConfig?.thinkingLevel as 'LOW' | 'MEDIUM' | 'HIGH'],
+    usageContext: request.usageContext || { action: 'enhance' as const, prompt: video ? '[youtube-video-brief]' : '[text-task]' },
+    ...(video ? { outputFormat: 'youtube_analysis' as const } : {}),
+  };
+  return generateContent(normalized, provider === 'openrouter' ? '/api/openrouter-text-generate' : provider === 'openai' ? '/api/openai-text-generate' : GEMINI_ENDPOINT, options);
+};
 export const getGeminiClient = () => ({
   models: {
-    generateContent: (request: GenerateContentRequest, options?: TextTaskOptions) => generateContent(request, GEMINI_ENDPOINT, options),
+    generateContent: routeTextContent,
   },
 });
 
 /** Legacy export name: both compatible providers use the same normalized
  * text/reference contract and authenticated streaming client. */
 export const getOpenAITextClient = () => ({
-  models: { generateContent: (request: GenerateContentRequest, options?: TextTaskOptions) => generateContent(request,
-    request.model === OPENROUTER_TEXT_MODEL ? '/api/openrouter-text-generate' : '/api/openai-text-generate', options) },
+  models: { generateContent: routeTextContent },
 });
 
 export const isGeminiConfigured = async (): Promise<boolean> => {

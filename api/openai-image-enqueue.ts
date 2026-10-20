@@ -1,4 +1,3 @@
-import { missingProviderMessage } from './_lib/providerConfiguration.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, createServiceRoleClient, createUserScopedClient, requireUser } from './_lib/auth.js';
 import { getOpenAISessionId } from './_lib/openaiGuard.js';
@@ -11,10 +10,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method==='OPTIONS') return res.status(200).end();
   if (req.method!=='POST') return res.status(405).json({ error:'Method not allowed' });
   const user = await requireUser(req,res); if (!user) return;
-  if (process.env.OPENAI_ENABLED==='false' || (process.env.VERCEL_ENV && process.env.VERCEL_ENV!=='production')) return res.status(503).json({ error:'Image generation is temporarily disabled.' });
+  if ((process.env.VERCEL_ENV && process.env.VERCEL_ENV!=='production')) return res.status(503).json({ error:'Image generation is temporarily disabled.' });
   const sessionId = getOpenAISessionId(req), db = createServiceRoleClient();
   if (!sessionId) return res.status(401).json({ error:'Refresh your session before generating.' });
-  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error:missingProviderMessage('OpenAI','OPENAI_API_KEY') });
   if (!db) return res.status(503).json({ error:'Image generation tracking is unavailable. No generation was submitted.' });
   let body: any;
   try { body = typeof req.body==='string' ? JSON.parse(req.body) : req.body; }

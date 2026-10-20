@@ -22,6 +22,9 @@ import evolinkGenerate from '../../api/evolink-generate.ts';
 import evolinkStatus from '../../api/evolink-status.ts';
 import youtube from '../../api/youtube.ts';
 import youtubeStatus from '../../api/youtube-status.ts';
+import seedanceVideo from '../../api/seedance-video.ts';
+import { chooseProvider } from '../../api/_lib/providerConfiguration.ts';
+import { seedanceProviderError } from '../../src/lib/video/seedanceProviders.ts';
 
 const KEY_NAMES=new Set(['OPENAI_API_KEY','OPENROUTER_API_KEY','GEMINI_API_KEY','YOUTUBE_API_KEY','FAL_KEY','EVOLINK_API_KEY']);
 const io=readline.createInterface({input:process.stdin,crlfDelay:Infinity});
@@ -47,6 +50,16 @@ const wake=()=>{
 setQueueWake(wake);
 const routes={'openai-text-generate':openaiText,'openrouter-text-generate':openrouterText,'gemini-generate':geminiGenerate,'gemini-status':geminiStatus,'openai-image-generate':openaiImage,'openai-image-enqueue':openaiEnqueue,'openai-image-recover':openaiRecover,'fal-image-generate':falImage,'fal-status':falStatus,'fal-h3-video':falVideo,'fal-video-scale':falScale,'evolink-generate':evolinkGenerate,'evolink-status':evolinkStatus,'youtube':youtube,'youtube-status':youtubeStatus};
 const prepareMedia=createMediaUploader(workspace);
+routes['seedance-video']=async(req,res)=>{
+ if(req.method==='POST'){
+  try{
+   const provider=chooseProvider(req.body?.videoModel,req.body?.provider),error=seedanceProviderError(provider,req.body);
+   if(error)return res.status(400).json({error});
+   req.body=await prepareMedia(provider,{...req.body,provider});
+  }catch(error){return res.status(400).json({error:error.message});}
+ }
+ return seedanceVideo(req,res);
+};
 for(const [name,provider] of [['fal-image-generate','fal'],['fal-h3-video','fal'],['fal-video-scale','fal'],['evolink-generate','evolink']]){
  const original=routes[name];routes[name]=async(req,res)=>{if(req.method==='POST'){try{req.body=await prepareMedia(provider,req.body);}catch(error){return res.status(400).json({error:error.message});}}return original(req,res);};
 }

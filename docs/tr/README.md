@@ -99,9 +99,9 @@ MiniMax H3 Max modları: **Text to Video Max · Image to Video Max · Reference 
 
 | Cihazın | Bugün sunulan sürüm | Buradan başla |
 | --- | --- | --- |
-| Apple Silicon işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-arm64.zip) · [Kurulum rehberi](desktop.md) |
-| Intel işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-x64.zip) · [Kurulum rehberi](desktop.md) |
-| Windows 10/11, 64-bit Intel/AMD | Bağımsız taşınabilir uygulama | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-windows-x64.zip) · [Kurulum rehberi](desktop.md#windows-indir-ve-aç) |
+| Apple Silicon işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.2/Banana-Studio-0.1.2-macos-arm64.zip) · [Kurulum rehberi](desktop.md) |
+| Intel işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.2/Banana-Studio-0.1.2-macos-x64.zip) · [Kurulum rehberi](desktop.md) |
+| Windows 10/11, 64-bit Intel/AMD | Bağımsız taşınabilir uygulama | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.2/Banana-Studio-0.1.2-windows-x64.zip) · [Kurulum rehberi](desktop.md#windows-indir-ve-aç) |
 | Diğer bilgisayarlar, telefon ve tablet | Tarayıcı üzerinden web sürümü | Kurulmuş web adresini aç; erişimi ve servis anahtarlarını web alanının sahibi yönetir. |
 
 **Masaüstünde hızlı başlangıç:** indir → zip'i ayıkla → aç (Mac'te önce Uygulamalar'a taşı) → **Provider keys** → modelin anahtarını gir → üret. Bağımsız uygulamada **Supabase, Vercel, Google ile giriş veya ayrıca Node kurulumu gerekmez**. Galeri bilgisayarında; anahtarlar Mac'te Anahtar Zinciri'nde, Windows'ta Credential Manager'da tutulur. Üretim sürerken uygulamayı açık tut; pencereyi küçültebilirsin. [İlk açılış izinleri, güncelleme ve yedekleme →](desktop.md)
@@ -110,19 +110,22 @@ MiniMax H3 Max modları: **Text to Video Max · Image to Video Max · Reference 
 
 API anahtarı, uygulamanın ilgili yapay zekâ servisindeki hesabını kullanmasını sağlayan özel bir erişim bilgisidir. Yalnızca kullanacağın servisleri ekle. Tablo **bu uygulamanın kullandığı bağlantıları** gösterir; modelleri sunan tüm servislerin listesi değildir.
 
-| Model veya özellik | Uygulamadaki sağlayıcı | Anahtar / sunucu değişkeni |
+| Model veya özellik | Sağlayıcılar (Auto önceliği) | Uygun anahtarlardan biri yeterli |
 | --- | --- | --- |
-| GPT Image 2.5 — görsel üretimi ve alan düzenleme | OpenAI | `OPENAI_API_KEY` |
-| Nano Banana Pro | fal.ai | `FAL_KEY` |
-| Nano Banana 2.1 | fal.ai | `FAL_KEY` |
+| GPT Image 2.5 — yeni görsel ve korumalı alan editi | OpenAI → OpenRouter → fal.ai | `OPENAI_API_KEY` / `OPENROUTER_API_KEY` / `FAL_KEY` |
+| Nano Banana Pro / Nano Banana 2.1 | fal.ai → Google Gemini → OpenRouter | `FAL_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` |
 | Claude Opus 5.5 — Enhance, Brainstorm, varyasyon ve yaratıcı brief | OpenRouter | `OPENROUTER_API_KEY` |
-| GPT-6.1 Sol — aynı metin görevleri | OpenAI | `OPENAI_API_KEY` |
-| Gemini 3.8 Flash — metin görevleri ve YouTube videosunu okuma | Google Gemini | `GEMINI_API_KEY` |
-| Seedance 2.0 / Seedance 2.5 Relaxed | EvoLink | `EVOLINK_API_KEY` |
+| GPT-6.1 Sol — metin özellikleri | OpenAI → OpenRouter | `OPENAI_API_KEY` / `OPENROUTER_API_KEY` |
+| Gemini 3.8 Flash — metin ve YouTube videosu analizi | Google Gemini → OpenRouter | `GEMINI_API_KEY` / `OPENROUTER_API_KEY` |
+| Seedance 2.0 / 2.5 | EvoLink → fal.ai → OpenRouter (desteklenen işlemler) | `EVOLINK_API_KEY` / `FAL_KEY` / `OPENROUTER_API_KEY` |
 | MiniMax H3 Max — metin/görsel/referanstan video, uzatma, lip sync ve recast | fal.ai | `FAL_KEY` |
 | YouTube kanal/video araması | Google YouTube Data API v3 | `YOUTUBE_API_KEY` |
 
-Varsayılan görsel modeli **GPT Image 2.5**, yaratıcı metin modeli **Opus 5.5 / Medium**. Bu ikili için OpenAI + OpenRouter anahtarları gerekir. Metin modelini ve düşünme seviyesini **AI settings** üzerinden değiştirebilirsin. Gemini anahtarı tek başına fal.ai üzerinden çalışan görsel modellerini açmaz. Tam YouTube analizi için YouTube arama anahtarı, videoyu okumak için Gemini ve seçilen yaratıcı modelin sağlayıcısı gerekir. Bazı video referansı boyutlandırmaları ayrıca fal.ai kullanır. [Anahtar oluşturma bağlantıları, örnekler ve tam özellik tablosu →](models.md)
+**Tek sağlayıcıyla başlayabilirsin:** **OpenRouter anahtarı** GPT/Nano görselleri, Opus/GPT/Gemini metin özellikleri, video analizi ve desteklenen Seedance işlemlerini açabilir. **fal.ai anahtarı** GPT/Nano görsel, Seedance ve H3 Max video için yeterli olabilir; Enhance/Brainstorm için ayrıca bir metin sağlayıcısı ekle. **Gemini anahtarı** Nano görsellerini ve Gemini metin/analizini açar. Bütün anahtarları girmen gerekmez. YouTube arama/bilgileri için ayrı YouTube Data API anahtarı gerekir.
+
+Varsayılan yaratıcı model **Opus 5.5 / Medium** olarak kalır. Modeli, düşünme seviyesini ve **Auto / belirli sağlayıcı** seçimini **AI settings** üzerinden yap. Sağlayıcı üretim başlamadan belirlenir ve kayıtlı işte sabitlenir; sonucu belirsiz ücretli istek başka serviste tekrarlanmaz. Sonuçlarda kullanılan sağlayıcı görünür. Onayladığın edit alanının dışındaki kaynak pikseller her görsel bağlantısında korunur.
+
+OpenRouter Seedance bu uygulamada metin, first/last frame ve görsel referanslarını destekler; sabit süre ve görüntü oranı gerekir, Seedance 2.5 için 480p/720p sunar. Video/ses referansı, Edit/Extend, Auto süre veya 2.5 ile 1080p için fal.ai/EvoLink seç. **Relaxed** yalnızca EvoLink bağlantısına aittir. Bazı video referansı ön işlemleri ayrıca fal.ai kullanır. [Sağlayıcı limitleri, anahtar bağlantıları ve örnekler →](models.md)
 
 ## Hangi sistemlerle çalışıyor?
 

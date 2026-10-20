@@ -1,11 +1,8 @@
-import { isLocalWorkspace } from '../lib/config/runtimeConfig';
 import { getSession, supabase } from './authService';
 import { createTaskDeadline, waitForTask } from '../lib/shared/asyncTask';
 import { configureTextModelPreferences, GEMINI_THINKING_LEVELS, resolveTextModelPreferences, type TextModelPreferences } from '../lib/prompts/textModels';
 import { TEXT_MODEL_OPTIONS } from '../types';
 import { isOpenAIReasoningEffort } from '../lib/prompts/openaiText';
-import { OPENROUTER_TEXT_MODEL } from '../lib/prompts/openrouterText';
-import { OPENAI_TEXT_MODEL } from '../lib/prompts/openaiText';
 
 export type SavedTextPreferences = TextModelPreferences & { source: 'personal' | 'all'; revision: number; canSaveAll: boolean;
   preferredModel?: TextModelPreferences['model']; openRouterConfigured?: boolean };
@@ -27,20 +24,7 @@ async function requestPreferences(scope?: TextPreferenceScope, preferences?: Tex
       || !GEMINI_THINKING_LEVELS.includes(data.thinkingLevel) || !isOpenAIReasoningEffort(data.reasoningEffort)
       || !['personal', 'all'].includes(data.source) || typeof data.canSaveAll !== 'boolean'
       || !Number.isSafeInteger(data.revision) || data.revision < 1) throw new Error('Invalid model settings response. Please try again.');
-    if (data.model !== OPENROUTER_TEXT_MODEL) return data as SavedTextPreferences;
-    // Roll out the global preference safely before the owner installs the key.
-    // Recheck on EVERY new task so adding the key activates Opus for all users
-    // without another save, and running requests keep their actual model.
-    const status = await waitForTask(fetch('/api/gemini-status', {
-      cache: 'no-store', headers: { Authorization: `Bearer ${session.access_token}` }, signal: task.signal,
-    }), task.signal);
-    if (!status.ok) throw new Error('Model configuration could not be loaded. Please try again.');
-    const config = await waitForTask(status.json(), task.signal);
-    if (typeof config?.openRouterConfigured !== 'boolean') throw new Error('Invalid model configuration. Please try again.');
-    const latest = await waitForTask(getSession(), task.signal);
-    if (latest?.user.id !== session.user.id) throw new Error('Session changed. Please try again.');
-    return { ...data, preferredModel: data.model, openRouterConfigured: config.openRouterConfigured,
-      model: config.openRouterConfigured || isLocalWorkspace() ? OPENROUTER_TEXT_MODEL : OPENAI_TEXT_MODEL } as SavedTextPreferences;
+    return data as SavedTextPreferences;
   } finally { task.dispose(); }
 }
 

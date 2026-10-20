@@ -2,6 +2,7 @@ import { decodeRaster as decode, encodeRasterPNG } from './rasterCodec.js';
 import { editRegionPixels, type ImageEditRegion } from '../../src/lib/images/imageEditRegion.js';
 import { imageSha256 } from './imageStorage.js';
 import { compositeEditPixels } from '../../src/lib/images/imageEditPixels.js';
+import { resizePixels } from '../../src/lib/images/resizePixels.js';
 
 const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -25,15 +26,18 @@ export const readEditSource = async (db: any, url: string, userId: string) => {
 /** The model may redraw the full canvas. Accept only its selected area.
  * Blend a narrow border INSIDE the selection; outside pixels are never touched. */
 export const compositeProtectedEdit = async (
-  source: Awaited<ReturnType<typeof readEditSource>>, generated: Buffer, region: ImageEditRegion,
+  source: Awaited<ReturnType<typeof readEditSource>>, generated: Buffer, region: ImageEditRegion, allowTierResize = false,
 ) => {
   const output = await decode(generated);
   const { width, height } = source.info;
-  if (output.info.width !== width || output.info.height !== height) {
+  const differentSize = output.info.width !== width || output.info.height !== height;
+  const sameRatio = Math.abs(output.info.width / output.info.height - width / height) / (width / height) <= .01;
+  if (differentSize && (!allowTierResize || !sameRatio)) {
     throw new Error('The provider returned a different canvas size. The protected edit was not saved; check usage before retrying.');
   }
   const bounds = editRegionPixels(region, width, height);
-  const pixels = compositeEditPixels(source.data, output.data, width, height, region);
+  const generatedPixels = differentSize ? resizePixels(output.data, output.info.width, output.info.height, width, height) : output.data;
+  const pixels = compositeEditPixels(source.data, generatedPixels, width, height, region);
   const bytes = await encodeRasterPNG(pixels, width, height);
   return { bytes, bounds };
 };

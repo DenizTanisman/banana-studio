@@ -1,3 +1,4 @@
+import { MODEL_ROUTES } from '../../src/lib/providers.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -105,6 +106,11 @@ export class LocalWorkspace {
     } catch(error) { return fail(error.code==='23505'?'Row already exists.':'Local workspace operation could not be completed.',error.code||'LOCAL_VALIDATION'); }
   }
   rpc(name,args,trusted) {
+    if(name==='get_provider_preferences')return this.setting('providerRoutes')||{};
+    if(name==='save_provider_preference'){
+      if(!MODEL_ROUTES[args.p_model] || args.p_provider!=='auto'&&!MODEL_ROUTES[args.p_model].includes(args.p_provider))throw new Error('Unsupported provider choice.');
+      this.setting('providerRoutes',{...(this.setting('providerRoutes')||{}),[args.p_model]:args.p_provider});return true;
+    }
     if(name==='get_text_model_preferences'||name==='save_text_model_preferences') {
       if(name.startsWith('save'))this.setting('textPreferences',{model:args.p_model,thinkingLevel:args.p_gemini_thinking,reasoningEffort:args.p_openai_reasoning});
       return {...(this.setting('textPreferences')||{model:'anthropic/claude-opus-5.5',thinkingLevel:'MEDIUM',reasoningEffort:'medium'}),source:'personal',canSaveAll:false,revision:1};
@@ -125,7 +131,7 @@ export class LocalWorkspace {
       const existing=this.job(a.p_id);if(existing)return {state:existing.state};if(this.pendingJobs().length>=100)return {error:'full'};
       if(this.get('generations',a.p_id))return {error:'exists'};
       const job={id:a.p_id,userId:this.user.id,payload:a.p_payload,metadata:a.p_metadata,state:'queued',at:Date.now()};
-      this.job(a.p_id,job);this.put('generations',a.p_id,{id:a.p_id,user_id:this.user.id,prompt:a.p_payload.displayPrompt,url:'',type:'image',aspect_ratio:a.p_payload.aspectRatio,resolution:a.p_payload.resolution,image_model:a.p_payload.model,folder_id:a.p_payload.folderId,reference_images:a.p_payload.referenceImages,created_at:job.at,status:'pending',is_favorite:false,metadata:{...a.p_metadata,imageJobState:'queued'}});return {state:'queued'};
+      this.job(a.p_id,job);this.put('generations',a.p_id,{id:a.p_id,user_id:this.user.id,prompt:a.p_payload.displayPrompt,url:'',type:'image',aspect_ratio:a.p_payload.aspectRatio,resolution:a.p_payload.resolution,image_model:a.p_payload.model,folder_id:a.p_payload.folderId,reference_images:a.p_payload.referenceImages,created_at:job.at,status:'pending',is_favorite:false,metadata:{...a.p_metadata,imageQueue:{version:1,queuedAt:job.at},imageStage:'queued',imageJobState:'queued'}});return {state:'queued'};
     }
     if(name==='image_job_outbox')return this.pendingJobs().map(j=>({id:j.id,user_id:j.userId}));
     if(name==='mark_image_job_published')return true;

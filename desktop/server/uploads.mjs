@@ -5,7 +5,7 @@ import { createFalClient } from '@fal-ai/client';
 
 class ReferenceUploadError extends Error {}
 const MIME={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',avif:'image/avif',mp4:'video/mp4',mov:'video/quicktime',webm:'video/webm',mp3:'audio/mpeg',wav:'audio/wav',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac',ogg:'audio/ogg'};
-const keyName=provider=>provider==='fal'?'FAL_KEY':'EVOLINK_API_KEY';
+const keyName=provider=>provider==='fal'?'FAL_KEY':provider==='openrouter'?'OPENROUTER_API_KEY':'EVOLINK_API_KEY';
 
 /** Only selected media URL fields leave the local workspace. Plain prompts and
  * unrelated metadata are never treated as files. Provider URLs live in memory;
@@ -16,6 +16,10 @@ export function createMediaUploader(workspace,{fetchImpl=fetch,falUpload}={}) {
     const key=workspace.mediaKey(value);if(!key)return value;
     const file=workspace.mediaPath(key),stat=fs.statSync(file),ext=path.extname(key).slice(1).toLowerCase(),type=MIME[ext];
     if(!type)throw new ReferenceUploadError('This reference file format is not supported.');
+    if(provider==='openrouter') {
+      if(!['image/png','image/jpeg','image/webp'].includes(type)||stat.size>20*1024*1024)throw new ReferenceUploadError('OpenRouter frame/reference images must be PNG, JPEG or WebP, up to 20 MB.');
+      return `data:${type};base64,${fs.readFileSync(file).toString('base64')}`;
+    }
     const token=process.env[keyName(provider)];if(!token)throw new Error(`Add your ${provider==='fal'?'fal.ai':'EvoLink'} key in Provider keys before using this reference.`);
     const limit=provider==='fal'?512*1024*1024:100*1024*1024;if(stat.size>limit)throw new Error(`The reference exceeds the ${Math.round(limit/1024/1024)} MB provider upload limit.`);
     const cacheKey=[provider,key,stat.mtimeMs,stat.size].join(':');const cached=cache.get(cacheKey);if(cached&&cached.expires>Date.now())return cached.promise;

@@ -1,3 +1,4 @@
+import { selectProvider } from './providerRouting';
 import type { GeneratedMedia, GenerationConfig } from '../types';
 import { normalizePromptPreparation } from '../lib/prompts/promptPreparation';
 import { withoutLegacyMask } from '../lib/references/referenceImages';
@@ -114,12 +115,13 @@ export const generateOpenAIImage = async (
   onProgress?: (progress: number) => void,
 ): Promise<GeneratedMedia> => {
   config = structuredClone(config);
+  config.imageProvider = config.imageProvider || await selectProvider(config.imageModel);
   validateImageGenerationReferences({ ...config, prompt });
-  const options = getOpenAIImageOptions(config.openaiImageOptions);
-  const optionError = validateOpenAIImageOptions(options) || validateOpenAIImageSize(getOpenAIImageSize(config));
+  const options = getOpenAIImageOptions(config.imageModel === SUNBURST_MODEL ? config.openaiImageOptions : undefined);
+  const optionError = validateOpenAIImageOptions(options) || validateOpenAIImageSize(getOpenAIImageSize({ ...config, openaiImageOptions: options }));
   if (optionError) throw new Error(optionError);
   const refs = getSunburstReferences(config.referenceImages || []);
-  if (refs.length > 16 || refs.some(ref => !ref.data)) throw new Error('Attach up to 16 valid reference images.');
+  if (refs.length > (config.imageModel === SUNBURST_MODEL ? 16 : 14) || refs.some(ref => !ref.data)) throw new Error('Attach up to 16 valid reference images.');
   const initialSession = await getImageSession();
   const owner = initialSession.user?.id;
   const id = context?.id || crypto.randomUUID();
@@ -129,7 +131,7 @@ export const generateOpenAIImage = async (
   const work = (async () => {
     const pending: GeneratedMedia = { id, url: '', prompt: config.prompt, originalPrompt: config.originalPrompt,
       createdAt: Date.now(), imageQueue: { version: 1, queuedAt: Date.now() }, imageStage: 'queued', status: 'pending',
-      mediaType: 'image', imageModel: SUNBURST_MODEL, aspectRatio: config.aspectRatio, resolution: config.resolution,
+      mediaType: 'image', imageModel: config.imageModel, aspectRatio: config.aspectRatio, resolution: config.resolution,
       folderId: context?.folderId, referenceImages: refs };
     const accepted = await imageGenerationQueue.run(initialSession.user?.id || initialSession.access_token, id, async () => {
       await assertImageSession(owner);
@@ -144,7 +146,7 @@ export const generateOpenAIImage = async (
       try {
         response = await fetch('/api/openai-image-enqueue', {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-          body: JSON.stringify({ id, model: SUNBURST_MODEL, prompt, displayPrompt: config.prompt,
+          body: JSON.stringify({ id, model: config.imageModel, provider: config.imageProvider, prompt, displayPrompt: config.prompt,
             originalPrompt: config.originalPrompt, promptPreparation: normalizePromptPreparation(config.promptPreparation), youtubeSource: config.youtubeSource,
             aspectRatio: config.aspectRatio, resolution: config.resolution, imagePromptCategory: config.imagePromptCategory,
             options, referenceImages, folderId: context?.folderId }),

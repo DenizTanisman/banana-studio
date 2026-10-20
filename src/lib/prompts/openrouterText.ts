@@ -9,9 +9,10 @@ export const isOpenRouterReasoningEffort = (value: unknown): value is OpenRouter
 
 /** Prefer OpenRouter's actual request cost, including caching/provider routing.
  * Token pricing is a fallback for responses without native cost accounting. */
-export const calculateOpenRouterTextCost = (usage: any): number | null => {
+export const calculateOpenRouterTextCost = (usage: any, model: string = OPENROUTER_TEXT_MODEL): number | null => {
   const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
   if (usage?.cost != null) return valid(usage.cost) ? usage.cost : null;
+  if (model !== OPENROUTER_TEXT_MODEL) return null;
   const input = usage?.prompt_tokens;
   const output = usage?.completion_tokens;
   const cached = usage?.prompt_tokens_details?.cached_tokens ?? 0;

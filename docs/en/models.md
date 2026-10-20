@@ -6,44 +6,52 @@ The **model** makes the content. The **provider** accepts the request and bills 
 
 These tables describe the app's configured routes. Provider availability, account permissions, pricing and quotas can change independently. There are no bundled API credits or preconfigured private accounts.
 
-## Image generation and protected edits
+## Choose accounts, not mandatory bundles
 
-| In the model selector | Provider | Mac field | Server environment variable |
+Add **one or more** provider keys in **Provider keys** on Mac or Windows. In **AI settings → Provider routing**, choose **Auto** or pin a provider for each model. The generation bar and edit composer show that choice too. Auto tries the configured routes in the table's order **before** sending a request. Missing keys are skipped; they are not required setup steps.
+
+Once accepted, an image job keeps its provider across reloads and app restarts. Changing settings affects new work. Removing a key does not switch a saved job to another account/provider. Restore its original key to recover it. Ambiguous timeouts are never automatically submitted elsewhere. Routing preferences are saved in the desktop workspace database, or per account in this browser for hosted web installations.
+
+## Models and routes
+
+| Model / feature | Auto priority | Any matching key |
+| --- | --- | --- |
+| GPT Image 2.5 | OpenAI → OpenRouter → fal.ai | `OPENAI_API_KEY` / `OPENROUTER_API_KEY` / `FAL_KEY` |
+| Nano Banana Pro / 2.1 | fal.ai → Google Gemini → OpenRouter | `FAL_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` |
+| Opus 5.5 — default creative model, Medium | OpenRouter | `OPENROUTER_API_KEY` |
+| GPT-6.1 Sol — Enhance, Brainstorm, variations | OpenAI → OpenRouter | `OPENAI_API_KEY` / `OPENROUTER_API_KEY` |
+| Gemini 3.8 Flash — text and footage analysis | Google Gemini → OpenRouter | `GEMINI_API_KEY` / `OPENROUTER_API_KEY` |
+| Seedance 2.0 / 2.5 | EvoLink → fal.ai → OpenRouter | `EVOLINK_API_KEY` / `FAL_KEY` / `OPENROUTER_API_KEY` |
+| H3 Max — Text/Image/Reference to Video, Extend, Lip Sync, Recast | fal.ai | `FAL_KEY` |
+| Reference-video preprocessing, when required | fal.ai | `FAL_KEY` |
+| YouTube search / channel and video metadata | YouTube Data API v3 | `YOUTUBE_API_KEY` |
+
+All three image providers support reference-based generation. Uploading references does not enable protected editing automatically: explicitly select **Edit area** for that. The final selected area is composited onto the source; outside pixels stay original regardless of provider. Tier-based Nano outputs may be resized to the source canvas before compositing, only when their proportions match. A different canvas ratio is rejected. A provider's reference-image API may be named “edit”; the app's reference-generation prompt does not carry an area edit's source-preservation instructions.
+
+Thinking/reasoning remains in AI settings. Choosing fal.ai alone does not enable Enhance or Brainstorm: fal's deprecated Any LLM endpoint is not used. An Anthropic key is not an OpenRouter key. A saved key still needs model access and sufficient API credit.
+
+## Video differences
+
+| Operation | EvoLink | fal.ai | OpenRouter in this app |
 | --- | --- | --- | --- |
-| GPT Image 2.5 | OpenAI | OpenAI | `OPENAI_API_KEY` |
-| Nano Banana Pro | fal.ai | fal.ai | `FAL_KEY` |
-| Nano Banana 2.1 | fal.ai | fal.ai | `FAL_KEY` |
+| Text to video | Yes | Yes | Yes |
+| First frame / first + last frame | Yes | Yes | Yes |
+| Image references | Yes | Yes | Yes, up to 9 |
+| Video / audio references | Yes | Yes | Not enabled |
+| Seedance 2.5 Edit / Extend | Yes | Yes | Not enabled |
+| Seedance 2.5 Auto duration | Yes | Yes | Fixed 4–30 seconds |
+| Seedance 2.5 resolution | 480p / 720p / 1080p | 480p / 720p / 1080p | 480p / 720p |
+| Seedance 2.0 fixed duration | 4–15 seconds | 4–15 seconds | 4–15 seconds |
 
-Nano Banana Pro and 2.1 are routed through fal.ai in the current image-generation workflow. Adding `GEMINI_API_KEY` alone does not enable them. GPT Image 2.5 is routed directly to OpenAI. Legacy model names can appear in historical records; the current selector and provider routing determine new requests.
+**Seedance 2.5 Relaxed** refers specifically to the existing EvoLink route. fal.ai and OpenRouter use standard Seedance 2.5. They have their own prices, permissions and restrictions. H3 Max remains fal.ai-only; another MiniMax model with a similar name is not substituted. Unsupported options are checked before generating; the app never silently changes to a different model.
 
-## Enhance, Brainstorm and variations
+Video analysis reads the actual YouTube footage with Gemini, directly or through OpenRouter's Google AI Studio endpoint. Opus/GPT can then write the creative brief from those observations; they are not presented as watching the footage. YouTube search/metadata still needs a separate **YouTube Data API v3** key. Google OAuth credentials are separate and needed only for hosted sign-in.
 
-| Text model | Provider | Mac field | Variable |
-| --- | --- | --- | --- |
-| Claude Opus 5.5 — initial default, Medium | OpenRouter | OpenRouter | `OPENROUTER_API_KEY` |
-| GPT-6.1 Sol | OpenAI | OpenAI | `OPENAI_API_KEY` |
-| Gemini 3.8 Flash | Google Gemini | Google Gemini | `GEMINI_API_KEY` |
-
-Choose the model and thinking/reasoning level in **AI settings**. An Anthropic account key is not an OpenRouter key. Model permissions and provider credit still apply after a key is saved.
-
-## Video and YouTube
-
-| Feature | Required provider / key |
-| --- | --- |
-| Seedance 2.0 / Seedance 2.5 Relaxed | EvoLink — `EVOLINK_API_KEY` |
-| MiniMax H3 Max: Text to Video, Image to Video, Reference to Video, Extend, Lip Sync, Recast | fal.ai — `FAL_KEY` |
-| Reference-video resizing/preprocessing when needed | fal.ai — `FAL_KEY`, in addition to the generation provider |
-| YouTube channel/video search and metadata | Google YouTube Data API v3 — `YOUTUBE_API_KEY` |
-| Reading YouTube footage | Gemini — `GEMINI_API_KEY` |
-| Final creative video brief and Brainstorm | The selected text model's provider key |
-
-For the full default YouTube flow, plan for **YouTube Data API + Gemini + OpenRouter**, plus the provider used to generate your final images. Gemini does the factual footage extraction with its dedicated analysis settings; the creative thinking preference controls the chosen creative text model.
-
-Google OAuth client ID/secret used for web sign-in are separate from YouTube and Gemini API keys. The desktop apps do not need Google OAuth setup.
+Official contracts: [OpenRouter images](https://openrouter.ai/docs/guides/overview/multimodal/image-generation), [video generation](https://openrouter.ai/docs/guides/overview/multimodal/video-generation), [video understanding](https://openrouter.ai/docs/guides/overview/multimodal/videos), [fal Seedance 2.5](https://fal.ai/models/bytedance/seedance-2.5/reference-to-video/api), [fal GPT Image 2.5](https://fal.ai/models/openai/gpt-image-2.5/sunburst/text-to-image/api).
 
 ## Create a key
 
-Create an account with the provider, open its key dashboard, create a key and copy it into the matching **Provider keys** field on Mac. For the web version, the installation owner saves the same value under the environment variable above in Vercel, then redeploys.
+Create an account with the provider, open its key dashboard, create a key and copy it into the matching **Provider keys** field on Mac or Windows. For the web version, the installation owner saves the same value under the environment variable above in Vercel, then redeploys.
 
 | Provider | Start here | Official instructions |
 | --- | --- | --- |
@@ -60,17 +68,17 @@ For YouTube, create/select your own Google Cloud project, enable **YouTube Data 
 
 | You want… | Add and select… |
 | --- | --- |
-| Only GPT images, with prompts you write yourself | OpenAI key; GPT Image 2.5; no Enhance or Brainstorm required |
-| GPT images + GPT text assistance | OpenAI key; GPT Image 2.5 + GPT-6.1 Sol in AI settings, if your account has access |
-| The default image/creative pairing | OpenAI + OpenRouter; GPT Image 2.5 + Opus 5.5 / Medium |
-| Nano Banana + Gemini text assistance | fal.ai + Gemini; Nano Banana Pro/2.1 + Gemini 3.8 Flash |
-| H3 Max video | fal.ai, plus a text provider if you enhance the prompt |
-| Seedance video | EvoLink, plus fal.ai if reference-video preprocessing is needed; a text provider if using Enhance |
+| One AI billing account for images + text + supported video | OpenRouter; choose GPT Image / Nano images, Opus/GPT/Gemini text and supported Seedance modes |
+| Only images and video, writing prompts yourself | fal.ai; GPT Image / Nano, Seedance or H3 Max; no text key needed |
+| Nano images + Gemini Enhance / Brainstorm | Gemini key; select Gemini 3.8 Flash as the text model |
+| Direct GPT images + GPT text | OpenAI key; GPT Image 2.5 + GPT-6.1 Sol |
+| YouTube analysis + new thumbnail concepts | OpenRouter + YouTube Data API; use supported image routes, or add your preferred image provider |
+| Existing direct-provider setup | Keep your keys; Auto preserves the current primary route when configured, or pin your preference |
 
 ## Costs and key safety
 
 The app's estimates are not a provider balance or invoice. Charges can include text reasoning, references, output quality, video duration and preprocessing. Set spending limits with your providers and review their usage dashboards.
 
-Provider keys belong in **macOS Keychain** on desktop or **server environment variables** for web. Do not put them in a prompt, screenshot, GitHub issue, public repo or `VITE_*` variable. You do not need administrator-level billing keys to generate content. `FAL_ADMIN_KEY`, `OPENAI_ADMIN_KEY` and `OPENAI_PROJECT_ID` are optional hosted billing-report settings, not starter requirements.
+Provider keys belong in **macOS Keychain / Windows Credential Manager** on desktop or **server environment variables** for web. Do not put them in a prompt, screenshot, GitHub issue, public repo or `VITE_*` variable. You do not need administrator-level billing keys to generate content. `FAL_ADMIN_KEY`, `OPENAI_ADMIN_KEY` and `OPENAI_PROJECT_ID` are optional hosted billing-report settings, not starter requirements.
 
-Developer source of truth: [model choices](../../src/types.ts), [image routing](../../src/services/geminiService.ts), [video routing](../../src/services/runwayService.ts), [YouTube extraction](../../src/services/youtubeBriefService.ts), [native key fields](../../desktop/macos/Sources/BananaStudio/KeyVault.swift).
+Developer source of truth: [route registry](../../src/lib/providers.ts), [model choices](../../src/types.ts), [image routing](../../src/services/geminiService.ts), [video routing](../../src/services/runwayService.ts), [YouTube extraction](../../src/services/youtubeBriefService.ts), [native key fields](../../desktop/macos/Sources/BananaStudio/KeyVault.swift).

@@ -8,7 +8,6 @@ import { GeneratedMedia, GenerationConfig, ReferenceImage, ReferenceVideo, Refer
 import { getGeminiClient, getOpenAITextClient, Modality, ThinkingLevel, type TextTaskOptions } from "./geminiClient";
 import { createTaskDeadline, waitForTask } from '../lib/shared/asyncTask';
 import { compressBase64Image } from "./imageCompression";
-import { generateNanoBanana } from "./falImageService";
 import { generateOpenAIImage, type ImageGenerationContext } from "./openaiImageService";
 import { getSunburstReferences, SUNBURST_MODEL } from "../lib/images/openaiImage";
 import { assembleSunburstBrainstormIdea, buildReferenceGenerationRule, buildSunburstGuidance, prepareImagePromptResult, buildYouTubeCameraGazeRule, buildYouTubeWardrobeRule, buildYouTubeEditorialRule, buildYouTubeStyleReferenceRule, describeSunburstReference, getSunburstEditIntent, isYouTubeChannelBannerPrompt, isYouTubeThumbnailPrompt, normalizeSunburstPrompt, preserveSunburstEditBrief, preserveSunburstSourceBrief, preserveSunburstThumbnailBrief, stripLegacyOutputCanvas, type ImagePromptSettings } from "../lib/images/imagePrompting";
@@ -208,6 +207,7 @@ const generateTextContent = async (
   }
   const response = await ai.models.generateContent({
     model, contents: { parts: productionParts },
+    usageContext: { action, prompt }, ...(brainstormFormat ? { brainstormFormat } : {}), ...(brainstormCount != null ? { brainstormCount } : {}),
     config: { thinkingConfig: { thinkingLevel } },
   }, options);
   return { ...response, model };
@@ -882,73 +882,7 @@ export const generateMedia = async (
   if (activeImageModel !== config.imageModel) config = { ...config, imageModel: activeImageModel };
   const selectedImageModel = isSupportedImageModel(config.imageModel) ? config.imageModel : IMAGE_MODEL_NAME;
 
-  if (selectedImageModel === SUNBURST_MODEL) {
-    return generateOpenAIImage(config, normalizeSunburstPrompt(config.prompt, config.referenceImages || []), context, onProgress);
-  }
-
-  // Nano Banana models are hosted on fal.ai. Route through our Vercel proxy.
-  if (isFalImageModel(selectedImageModel)) {
-    const refs = config.referenceImages || [];
-    const edit = getSunburstEditIntent(config.prompt, refs, config);
-    const selection = edit?.sourceIndex != null ? refs[edit.sourceIndex].editRegion : undefined;
-    const cleanedPrompt = [!edit ? buildReferenceGenerationRule(refs) : '', normalizeReferencePrompt(edit ? stripYouTubeCameraGaze(config.prompt) : config.prompt, refs), refs.length ? `REFERENCE ROLES (actual input order)\n${refs.map(describeSunburstReference).join('\n')}` : '', selection ? describeEditRegionPercent(selection) : '', buildPersonIdentityContract(refs), buildYouTubeEditorialRule(config.prompt, refs, config), buildYouTubeStyleReferenceRule(config.prompt, refs, config), buildYouTubeWardrobeRule(config.prompt, refs, config), buildPersonSeparationRule(refs)].filter(Boolean).join('\n\n');
-
-    try {
-      const dataUrl = await generateNanoBanana(selectedImageModel, config, cleanedPrompt, onProgress, onTaskCreated);
-
-      await logUsage('generate', selectedImageModel, config.prompt, 1, {
-        resolution: config.resolution,
-        aspectRatio: config.aspectRatio,
-        referenceImageCount: refs.length,
-      });
-      return {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        url: dataUrl,
-        prompt: config.prompt,
-        aspectRatio: config.aspectRatio,
-        resolution: config.resolution,
-        imageModel: selectedImageModel,
-        imagePromptCategory: config.imagePromptCategory,
-        createdAt: Date.now(),
-        referenceImages: refs,
-        mediaType: 'image',
-      };
-    } catch (err: any) {
-      await logUsage('generate', selectedImageModel, config.prompt, 0, {
-        resolution: config.resolution,
-        aspectRatio: config.aspectRatio,
-        referenceImageCount: refs.length,
-      });
-      throw err;
-    }
-  }
-
-  // Fallback for any future image model that doesn't go through fal — still
-  // honors the original Gemini-direct path.
-  const ai = getGeminiClient();
-  const { url, usageMetadata, error } = await generateSingleImageContent(config.prompt, config, ai, selectedImageModel);
-
-  await logUsage('generate', selectedImageModel, config.prompt, url ? 1 : 0, {
-    usageMetadata: usageMetadata as any,
-    resolution: config.resolution,
-    referenceImageCount: config.referenceImages?.length || 0,
-  });
-
-  if (error) throw new Error(error);
-  if (!url) throw new Error("No media data returned from API.");
-
-  return {
-    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    url,
-    prompt: config.prompt,
-    aspectRatio: config.aspectRatio,
-    resolution: config.resolution,
-    imageModel: selectedImageModel,
-    imagePromptCategory: config.imagePromptCategory,
-    createdAt: Date.now(),
-    referenceImages: config.referenceImages || [],
-    mediaType: 'image',
-  };
+  return generateOpenAIImage({ ...config, imageModel: selectedImageModel }, normalizeSunburstPrompt(config.prompt, config.referenceImages || []), context, onProgress);
 };
 
 // Category-specific brainstorm prompts - optimized for Nano Banana image models
