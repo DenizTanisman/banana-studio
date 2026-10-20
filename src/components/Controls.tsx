@@ -2831,7 +2831,7 @@ export const Controls: React.FC<ControlsProps> = ({
                     className={`px-2.5 h-full flex items-center gap-1 text-xs font-semibold transition-colors ${
                       isVideoMode ? 'rounded-lg bg-violet-600 text-white shadow-sm' : 'rounded-lg text-gray-400 hover:bg-white/[0.05] hover:text-white'
                     }`}
-                    title={`Video Generation (${selectedVideoModel === 'seedance-2.0' ? 'Seedance 2.0' : selectedVideoModel === 'seedance-2.5' ? 'Seedance 2.5 Relaxed' : 'MiniMax H3 Max'})`}
+                    title={`Video Generation (${selectedVideoModel === 'seedance-2.0' ? 'Seedance 2.0' : selectedVideoModel === 'seedance-2.5' ? providerRoute.provider === 'evolink' ? 'Seedance 2.5 Relaxed' : 'Seedance 2.5' : 'MiniMax H3 Max'})`}
                     aria-label="Video generation"
                     aria-pressed={isVideoMode}
                   >

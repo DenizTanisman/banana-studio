@@ -888,6 +888,16 @@ export const createVideoTask = async (
     throw new Error(`Video ${operationLabel} requires at least one source video.`);
   }
 
+  // Re-create can bypass the composer. Reject incompatible routes before
+  // reference preparation, which may itself invoke paid fal.ai resizing.
+  const routeError = seedanceProviderError(selectedProvider, {
+    videoModel, mode: determineMode(referenceImages, refVids, refAudios, videoOperation),
+    duration: videoOperation === 'edit' ? -1 : videoDuration, quality: videoQuality, aspectRatio: videoAspectRatio,
+    imageUrls: referenceImages.map(() => ''), videoUrls: refVids.map(() => ''), audioUrls: refAudios.map(() => ''),
+    referenceEditMode: videoOperation === 'reference_edit',
+  });
+  if (routeError) throw new Error(routeError);
+
   const preparedVideos = await prepareReferenceVideos(
     refVids,
     videoAspectRatio,
@@ -999,8 +1009,8 @@ export const createVideoTask = async (
   if (videoUrls.length > 0) body.videoUrls = videoUrls;
   if (audioUrls.length > 0) body.audioUrls = audioUrls;
 
-  const routeError = seedanceProviderError(selectedProvider, body as any);
-  if (routeError) throw new Error(routeError);
+  const preparedRouteError = seedanceProviderError(selectedProvider, body as any);
+  if (preparedRouteError) throw new Error(preparedRouteError);
   const { data: { session: submitSession } } = await supabase.auth.getSession();
   if (submitSession?.user?.id !== initiatingUserId) throw new Error('Session changed before video submission.');
   const createRes = await fetch('/api/seedance-video', {
