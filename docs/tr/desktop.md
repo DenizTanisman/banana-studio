@@ -4,21 +4,21 @@
 
 ## Mac: indir ve aç
 
-Mevcut sürüm **v0.1.0**, gereken sistem **macOS 13.5 veya sonrası**. Çalışma ortamı pakete dahildir; Node.js, Supabase, Vercel veya veritabanı kurmazsın.
+Mevcut sürüm **v0.1.1**, gereken sistem **macOS 13.5 veya sonrası**. Çalışma ortamı pakete dahildir; Node.js, Supabase, Vercel veya veritabanı kurmazsın.
 
 1. Apple menüsünden **Bu Mac Hakkında / About This Mac** bölümünü aç. **Çip: Apple M…** yazıyorsa Apple Silicon; **Intel** yazıyorsa Intel indir.
 2. Uygun dosyayı seç:
 
    | Mac | İndirme |
    | --- | --- |
-   | Apple Silicon — M1 ve yenileri | [Banana-Studio-0.1.0-macos-arm64.zip](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-arm64.zip) |
-   | Intel | [Banana-Studio-0.1.0-macos-x64.zip](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-x64.zip) |
+   | Apple Silicon — M1 ve yenileri | [Banana-Studio-0.1.1-macos-arm64.zip](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-arm64.zip) |
+   | Intel | [Banana-Studio-0.1.1-macos-x64.zip](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-x64.zip) |
 
 3. Zip'e çift tıkla, **Banana Studio.app** dosyasını **Applications / Uygulamalar** klasörüne taşı ve oradan aç.
 4. Bu topluluk paketleri Apple tarafından notarize edilmemiştir. İlk açma denemesinden sonra macOS engellerse **Sistem Ayarları → Gizlilik ve Güvenlik → Yine de Aç / Open Anyway** bölümünden yalnızca Banana Studio için izin ver ve sistemin onayını tamamla. [Apple'ın rehberini izle](https://support.apple.com/102445); sistem genelindeki korumaları açık tut.
 5. Yerel galeri açılır. Google ile giriş veya Banana Studio hesabı gerekmez.
 
-**Kontrol:** üstte **Local workspace · This Mac**, boş galeri ve üretim kontrollerini görmelisin. Uygulamayı kullanmak için GitHub'ın **Source code** zip'ini değil, işlemcine uygun uygulama zip'ini indir.
+**Kontrol:** üstte **Local workspace · This computer**, boş galeri ve üretim kontrollerini görmelisin. Uygulamayı kullanmak için GitHub'ın **Source code** zip'ini değil, işlemcine uygun uygulama zip'ini indir.
 
 ## Gereken anahtarları ekle
 
@@ -46,16 +46,19 @@ Başlangıçta GPT Image 2.5 + Opus 5.5 / Medium seçilidir; OpenAI + OpenRouter
 
 Yerel veritabanı ayrıca şifrelenmez; dosyaları Mac hesap güvenliği, FileVault ve yedek ayarların korur. Uygulamayı yeniden kurmak galeri yedeği değildir. Yapay zekâ üretiminde seçtiğin prompt ve referanslar ilgili sağlayıcıya gönderilir. [Veri politikası](../../SECURITY.md).
 
-## Windows: web alanını kullan
+## Windows: indir ve aç
 
-**Mevcut yayında yerel Windows `.exe` veya `.msi` paketi yok.** Yayımlanan masaüstü arşivleri Mac uygulamasıdır, Windows'a kurulmaz.
+1. 64-bit Intel/AMD işlemcili Windows 10/11 için [Banana-Studio-0.1.1-windows-x64.zip](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-windows-x64.zip) indir.
+2. **Tümünü ayıkla** seç. Çıkan **Banana Studio** klasörünü bütün olarak tut; zip içinden çalıştırma, yalnızca `.exe` dosyasını taşıma.
+3. **BananaStudio.exe** aç. Node.js, .NET ve yerel veritabanı dahildir. Microsoft **Edge WebView2 Runtime** gerekir; Windows 10/11'de genellikle bulunur. Eksik olduğu belirtilirse [Microsoft'tan](https://developer.microsoft.com/microsoft-edge/webview2/) kur.
+4. **Provider keys** veya **File → Provider API Keys…** ile gereken anahtarları ekle. Anahtarlar **Windows Credential Manager** içinde saklanır. Supabase, Google girişi veya sunucu kurulumu gerekmez.
+5. Mac ile aynı Library, galeri, preview, görsel/video üretimi ve edit kontrollerini kullan.
 
-1. Kurulmuş Banana Studio web adresini alan sahibinden al veya [kendin kur](deploy.md).
-2. Güncel Edge veya Chrome gibi bir tarayıcıda aç.
-3. Google ile giriş yap. Alan sahibi e-posta adresine erişim vermelidir.
-4. Galeri, görsel düzenleme, Brainstorm ve video kontrollerini tarayıcıda kullan.
+Bu **imzasız topluluk sürümüdür**. Windows, tanınmayan yayıncı uyarısı gösterebilir. Arşivin bu reponun yayınından geldiğini ve SHA-256 değerinin `verification-windows-x64.json` ile eşleştiğini kontrol et. Windows güvenliğini kapatma, başka kaynaktan paket kullanma.
 
-Web sürümünde sağlayıcı anahtarlarını alan sahibi sunucuya girer. Ziyaretçiler PC'lerine Supabase service-role anahtarı girmez veya veritabanı kurmaz. Yeni kurulum boş başlar; bu repo başka birinin özel çalışma alanına erişim sağlamaz.
+Galeri `%LOCALAPPDATA%\Banana Studio\` içindedir; **File → Open Local Data Folder** ile aç. Yedeklemeden önce uygulamayı kapat ve tüm klasörü yedekle. Anahtarlar Credential Manager'da ayrı tutulur. Windows güncellemeleri elle yapılır: **File → Check for Updates…** GitHub Releases'i açar; uygulamayı kapat, yeni klasörü ayıkla ve çalıştır. Galeri ve anahtarlar uygulama klasörünün dışında kalır.
+
+Mac ve Windows aynı React arayüzünü ve SQLite çalışma alanını kullanır. Yerel menüler, dosya seçiciler ve anahtar saklama yöntemi işletim sistemine uygundur. Windows paketine Windows CI üzerinde derleme, Credential Manager ve korumalı edit entegrasyon testleri uygulanır; tam yayın kabulü için etkileşimli Windows UI testi de gerekir. [Platform karşılaştırması ve kısayollar](desktop-parity.md).
 
 ## Sık karşılaşılan durumlar
 

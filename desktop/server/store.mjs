@@ -47,7 +47,7 @@ export class LocalWorkspace {
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA trusted_schema=OFF; CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY,value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS records (collection TEXT NOT NULL,id TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(collection,id)); CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY,payload TEXT NOT NULL); CREATE TABLE IF NOT EXISTS ledger (id TEXT PRIMARY KEY,payload TEXT NOT NULL);');
     const identity=this.setting('identity') || { userId:randomUUID(), sessionId:randomUUID() };this.setting('identity',identity);this.identity=identity;
     this.user={id:identity.userId,email:'local@example.invalid',email_confirmed_at:'2026-01-01T00:00:00Z'};
-    this.put('profiles',this.user.id,{...this.user,display_name:'My Mac',role:'admin'});
+    this.put('profiles',this.user.id,{...this.user,display_name:'My workspace',role:'admin'});
     this.put('authorized_emails','local',{id:'local',email:this.user.email,is_active:true});
     for(const file of ['workspace.sqlite','workspace.sqlite-wal','workspace.sqlite-shm']) { const p=path.join(directory,file);if(fs.existsSync(p))fs.chmodSync(p,0o600); }
     this.origin='http://127.0.0.1';
@@ -58,6 +58,7 @@ export class LocalWorkspace {
   put(table,id,value) { this.db.prepare('INSERT OR REPLACE INTO records VALUES (?,?,?)').run(table,String(id),JSON.stringify(value)); }
   mediaPath(key) {
     if(typeof key!=='string'||key.length>800||!key||key.includes('\\')||key.includes('\0')||key.split('/').some(p=>!p||p==='.'||p==='..'||p.startsWith('.')))throw new Error('Invalid media path.');
+    if(process.platform==='win32'&&key.split('/').some(p=>/[<>:"|?*]/.test(p)||/[. ]$/.test(p)||/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(p)))throw new Error('Invalid Windows media path.');
     const result=path.resolve(this.mediaRoot,key);if(!result.startsWith(this.mediaRoot+path.sep))throw new Error('Invalid media path.');
     let current=this.mediaRoot;for(const part of key.split('/')) { current=path.join(current,part);if(fs.existsSync(current)&&fs.lstatSync(current).isSymbolicLink())throw new Error('Media symlinks are not allowed.'); }
     return result;

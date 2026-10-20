@@ -22,7 +22,7 @@ test('fresh source scans reject unexpected private files and external symlinks',
     await fs.writeFile(path.join(root, 'source.ts'), 'export const name = "Banana Studio";');
     assert.equal((await auditPublicRelease(root)).ok, true);
     await fs.writeFile(path.join(root, '.env.local'), 'OPENAI_API_KEY=');
-    await fs.symlink('/tmp', path.join(root, 'external'));
+    await fs.symlink(os.tmpdir(), path.join(root, 'external'),process.platform==='win32'?'junction':'dir');
     const result = await auditPublicRelease(root);
     assert.equal(result.ok, false);
     assert.deepEqual(result.findings.map(f => f.rule).sort(), ['private-file', 'unreviewed-symlink']);

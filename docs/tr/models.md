@@ -39,7 +39,7 @@ Modeli ve düşünme seviyesini **AI settings** bölümünden seç. Anthropic he
 
 Tam varsayılan YouTube akışı için **YouTube Data API + Gemini + OpenRouter**, ardından görseli üretecek sağlayıcı gerekir. Gemini videodan bilgi çıkarırken kendisine ayrılan analiz ayarını kullanır; yaratıcı düşünme tercihi seçili yaratıcı metin modelini yönetir.
 
-Web girişindeki Google OAuth client ID/secret, YouTube ve Gemini API anahtarlarından ayrıdır. Mac uygulamasına Google OAuth kurman gerekmez.
+Web girişindeki Google OAuth client ID/secret, YouTube ve Gemini API anahtarlarından ayrıdır. Masaüstü uygulamasına Google OAuth kurman gerekmez.
 
 ## Anahtar oluştur
 

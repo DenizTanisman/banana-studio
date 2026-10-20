@@ -2,7 +2,7 @@
 
 [Ana sayfa](README.md) · [English](../en/development.md) · [Web kurulumu](deploy.md) · [Yayın prosedürü](../RELEASING.md)
 
-Banana Studio tek React arayüzü ve iki çalışma alanı arka ucu kullanır. Bağımsız Mac uygulaması; bulut kimlik doğrulaması, veritabanı, depolama ve kuyruk adaptörlerini yerel karşılıklarıyla değiştirir, ayarlanmış bir Supabase projesi taşımaz. Repo bağımsız kurulum başlatır; üretim veritabanı veya özel Git geçmişi içermez.
+Banana Studio tek React arayüzü ve iki çalışma alanı arka ucu kullanır. Bağımsız masaüstü uygulaması; bulut kimlik doğrulaması, veritabanı, depolama ve kuyruk adaptörlerini yerel karşılıklarıyla değiştirir, ayarlanmış bir Supabase projesi taşımaz. Repo bağımsız kurulum başlatır; üretim veritabanı veya özel Git geçmişi içermez.
 
 ## Mimari
 
@@ -121,4 +121,21 @@ Model tip/seçeneklerini, arayüz yetenek kontrolünü, servis yönlendirmesini 
 
 Fork al, odaklı dal oluştur, kullanıcıya etkisini açıkla ve ilgili kontrollerle pull request gönder. Özel galeri, prompt, gerçek hesap bilgisi, veritabanı, ortam dosyası veya anahtarı commit, issue, ekran görüntüsü veya artifact'e koyma. Belge görsellerinde ayrı demo alanı kullan; [görsel kaynakları](../assets/README.md).
 
-Uygulama kodu MIT'dir; bağımlılıklar kendi lisanslarını, sağlayıcılar kendi koşullarını korur. Paketleme, lisans, imzalı arşiv/akış ve gerçek güncelleme testi için [RELEASING.md](../RELEASING.md) dosyasını izle. Fork yayımlayanlar kendi bundle ID, Anahtar Zinciri servisi, Sparkle imza anahtarları ve yayın adreslerini kullanmalıdır. Upstream public anahtar güncelleme imzalama yetkisi vermez. Repo şu anda yerel Windows paketi derlemez.
+Uygulama kodu MIT'dir; bağımlılıklar kendi lisanslarını, sağlayıcılar kendi koşullarını korur. Paketleme, lisans, imzalı arşiv/akış ve gerçek güncelleme testi için [RELEASING.md](../RELEASING.md) dosyasını izle. Fork yayımlayanlar kendi bundle ID, Anahtar Zinciri servisi, Sparkle imza anahtarları ve yayın adreslerini kullanmalıdır. Upstream public anahtar güncelleme imzalama yetkisi vermez. Windows paketleme ve doğrulama Windows CI üzerinde çalışır. Yerel farklar platform rehberinde açıklanmıştır.
+
+## Windows uygulamasını derle
+
+Windows x64 üzerinde Node 24 ve .NET SDK 8.0.426 kur, ardından çalıştır:
+
+```sh
+npm ci --ignore-scripts
+npm test
+npm run typecheck
+npm run build
+npm run build:desktop
+node scripts/fetch-node-runtime.mjs
+node scripts/package-windows.mjs
+node scripts/test-local-generation.mjs
+```
+
+Paket `.build/staging-windows/Banana Studio/` altında oluşur. Dosyaları bütün olarak tut. [Platform davranışları](desktop-parity.md) ve [yayın prosedürü](../RELEASING.md).

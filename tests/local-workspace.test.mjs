@@ -17,7 +17,7 @@ test('local records, folders and references persist independently; filters and p
     assert.equal((await db.from('generations').insert({id:'a'})).error.code,'23505');
     assert.equal((await db.from('generations').update({prompt:'Changed'}).eq('id','a')).error,null);
     const identity=f.store.identity;f.store.close();f.store=new LocalWorkspace(path.join(f.root,'data'));assert.deepEqual(f.store.identity,identity);assert.equal(f.store.get('generations','a').prompt,'Changed');
-    assert.equal((fs.statSync(path.join(f.root,'data/workspace.sqlite')).mode&0o777),0o600);
+    if(process.platform!=='win32')assert.equal((fs.statSync(path.join(f.root,'data/workspace.sqlite')).mode&0o777),0o600);
     assert.ok(f.store.execute({table:'profiles',operation:'update',filters:[{column:'id',operator:'eq',value:identity.userId}],value:{role:'other'}},false).error);
     assert.ok(f.store.execute({rpc:'dispatch_image_job',args:{}},false).error);
     assert.ok(f.store.execute({table:'generations',operation:'delete'},false).error);
@@ -26,12 +26,28 @@ test('local records, folders and references persist independently; filters and p
 test('media paths reject traversal and symlinks; access URLs follow the new local port',async()=>{
   const f=fixture();try {
     for(const value of ['../secret','a/../secret','/absolute','a\\secret','a//b','.hidden',''])assert.throws(()=>f.store.mediaPath(value));
-    fs.symlinkSync(f.root,path.join(f.store.mediaRoot,'escape'));assert.throws(()=>f.store.mediaPath('escape/file'));
+    if(process.platform==='win32')for(const value of ['CON.png','refs/aux','refs/photo.png:secret','refs/photo.','refs/photo '])assert.throws(()=>f.store.mediaPath(value));
+    fs.symlinkSync(f.root,path.join(f.store.mediaRoot,'escape'),process.platform==='win32'?'junction':'dir');assert.throws(()=>f.store.mediaPath('escape/file'));
     assert.equal((await f.store.upload('refs/sample.png',Buffer.from('synthetic'))).error,null);
     assert.equal((await f.store.upload('refs/sample.png',Buffer.from('duplicate'))).error.code,'23505');
     f.store.origin='http://127.0.0.1:12345';const old=f.store.mediaUrl('refs/sample.png');f.store.origin='http://127.0.0.1:54321';assert.equal(f.store.materialize({reference:old}).reference,'http://127.0.0.1:54321/storage/v1/object/authenticated/media/refs/sample.png');
     assert.equal(f.store.mediaKey('https://example.com/storage/v1/object/authenticated/media/secret'),null);
   } finally{f.store.close();f.cleanup();}
+});
+test('Library people, references and templates survive restart with current local preview URLs',async()=>{
+ const f=fixture();try{
+  f.store.origin='http://127.0.0.1:12001';
+  await f.store.upload('refs/library.png',Buffer.from('synthetic-preview'));
+  const image=f.store.mediaUrl('refs/library.png');const db=f.store.client();
+  assert.equal((await db.from('reference_images').insert({id:'reference',name:'Reference',url:image})).error,null);
+  assert.equal((await db.from('saved_people').insert({id:'person',name:'Person',photos:[{url:image}],updated_at:1})).error,null);
+  assert.equal((await db.from('templates').insert({id:'template',name:'Template',config:{prompt:'Example @[Reference 1]',referenceImages:[{data:image}]}})).error,null);
+  f.store.close();f.store=new LocalWorkspace(path.join(f.root,'data'));f.store.origin='http://127.0.0.1:12002';
+  const client=f.store.client();
+  assert.equal((await client.from('reference_images').select('*').eq('id','reference').single()).data.url,'http://127.0.0.1:12002/storage/v1/object/authenticated/media/refs/library.png');
+  assert.equal((await client.from('saved_people').select('id,cover:photos->0').single()).data.cover.url,f.store.mediaUrl('refs/library.png'));
+  assert.equal((await client.from('templates').select('*').single()).data.config.referenceImages[0].data,f.store.mediaUrl('refs/library.png'));
+ }finally{f.store.close();f.cleanup();}
 });
 test('a durable dispatch survives restart and can only be observed, never submitted again',()=>{
   const f=fixture();try {

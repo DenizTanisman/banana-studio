@@ -39,7 +39,7 @@ Choose the model and thinking/reasoning level in **AI settings**. An Anthropic a
 
 For the full default YouTube flow, plan for **YouTube Data API + Gemini + OpenRouter**, plus the provider used to generate your final images. Gemini does the factual footage extraction with its dedicated analysis settings; the creative thinking preference controls the chosen creative text model.
 
-Google OAuth client ID/secret used for web sign-in are separate from YouTube and Gemini API keys. The Mac app does not need Google OAuth setup.
+Google OAuth client ID/secret used for web sign-in are separate from YouTube and Gemini API keys. The desktop apps do not need Google OAuth setup.
 
 ## Create a key
 

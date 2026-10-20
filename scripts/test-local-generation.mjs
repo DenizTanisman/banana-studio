@@ -4,11 +4,17 @@ import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { pathToFileURL } from 'node:url';
 
-const app=path.resolve(process.argv[2]||'.build/staging/Banana Studio.app');
-const resources=path.join(app,'Contents/Resources'),executable=path.join(app,'Contents/MacOS/BananaStudio');
+const windows=process.platform==='win32';
+const app=path.resolve(process.argv[2]||(windows?'.build/staging-windows/Banana Studio':'.build/staging/Banana Studio.app'));
+const resources=windows?app:path.join(app,'Contents/Resources'),executable=path.join(app,'Contents/MacOS/BananaStudio');
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'banana-generation-test-'));
-const codec=input=>JSON.parse(execFileSync(executable,['--raster-codec'],{input:JSON.stringify(input),maxBuffer:200*1024*1024,timeout:30_000,env:{PATH:'/usr/bin:/bin'}}));
+const runtime=path.join(resources,windows?'runtime/node.exe':'runtime/node');
+const runtimeEnv=windows?Object.fromEntries(['SystemRoot','WINDIR','TEMP','TMP','USERPROFILE','LOCALAPPDATA'].filter(key=>process.env[key]).map(key=>[key,process.env[key]])):{PATH:'/usr/bin:/bin'};
+const codecFile=path.join(root,'codec.mjs');
+if(windows)fs.writeFileSync(codecFile,`import sharp from ${JSON.stringify(pathToFileURL(path.join(resources,'workspace/node_modules/sharp/lib/index.js')).href)};\nlet raw='';for await(const part of process.stdin)raw+=part;const input=JSON.parse(raw),bytes=Buffer.from(input.data,'base64');\nif(input.operation==='decode'){const {data,info}=await sharp(bytes).autoOrient().toColourspace('srgb').ensureAlpha().raw().toBuffer({resolveWithObject:true});process.stdout.write(JSON.stringify({data:data.toString('base64'),width:info.width,height:info.height}));}else{const data=await sharp(bytes,{raw:{width:input.width,height:input.height,channels:4}}).png().toBuffer();process.stdout.write(JSON.stringify({data:data.toString('base64')}));}`);
+const codec=input=>JSON.parse(execFileSync(windows?runtime:executable,windows?[codecFile]:['--raster-codec'],{input:JSON.stringify(input),maxBuffer:200*1024*1024,timeout:30_000,env:runtimeEnv}));
 let child,output='',diagnostics='';
 try {
  const width=1024,height=1024,sourcePixels=Buffer.alloc(width*height*4),generatedPixels=Buffer.alloc(width*height*4);
@@ -18,7 +24,7 @@ try {
  const preload=path.join(root,'mock-provider.mjs');
  fs.writeFileSync(preload,`import fs from 'node:fs';\nconst output=fs.readFileSync(${JSON.stringify(path.join(root,'provider.png'))}).toString('base64');\nglobalThis.fetch=async(url,options={})=>{\n if(!String(url).startsWith('https://api.openai.com/v1/images/'))throw new Error('Unexpected network request blocked by test');\n const input=JSON.parse(options.body);fs.appendFileSync(${JSON.stringify(path.join(root,'provider-calls.jsonl'))},JSON.stringify({size:input.size,hasDataURL:input.images?.[0]?.image_url?.startsWith('data:image/png;base64,'),hasCookie:!!options.headers.Cookie})+'\\n');\n return new Response(JSON.stringify({data:[{b64_json:output}],usage:{input_tokens:0,output_tokens:0}}),{status:200,headers:{'Content-Type':'application/json','x-request-id':'synthetic-request'}});\n};\n`);
  const bootstrap=randomBytes(32).toString('hex');
- child=spawn(path.join(resources,'runtime/node'),['--import',preload,path.join(resources,'workspace/server.mjs')],{cwd:path.join(resources,'workspace'),env:{PATH:'/usr/bin:/bin'},stdio:['pipe','pipe','pipe']});
+ child=spawn(runtime,['--import',preload,path.join(resources,'workspace/server.mjs')],{cwd:path.join(resources,'workspace'),env:runtimeEnv,stdio:['pipe','pipe','pipe']});
  child.stdout.on('data',data=>output+=data);child.stderr.on('data',data=>diagnostics+=data);
  child.stdin.write(JSON.stringify({dataDirectory:path.join(root,'workspace'),webRoot:path.join(resources,'workspace/web'),bootstrap,keys:{OPENAI_API_KEY:'integration-test-only-value'}})+'\n');
  let ready;const deadline=Date.now()+15_000;

@@ -1,4 +1,5 @@
 import { WorkspaceQuery } from './query.mjs';
+import { postNativeAction } from './nativeBridge';
 
 export const createLocalWorkspaceClient = (config: { userId: string; sessionId: string }) => {
   const user = { id: config.userId, email: 'local@example.invalid', email_confirmed_at: '2026-01-01T00:00:00Z', is_anonymous: false };
@@ -34,12 +35,10 @@ export const createLocalWorkspaceClient = (config: { userId: string; sessionId: 
       getUser: async () => ({ data: { user }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       stopAutoRefresh() {},
-      signOut: async () => { window.webkit?.messageHandlers?.bananaNative?.postMessage({ action: 'lock' }); return { error: null }; },
+      signOut: async () => { postNativeAction('lock'); return { error: null }; },
     },
     from: (table: string) => new WorkspaceQuery(send, table),
     rpc: (rpc: string, args = {}) => new WorkspaceQuery(send, undefined, rpc, args),
     storage: { from: storage },
   };
 };
-
-declare global { interface Window { webkit?: { messageHandlers?: { bananaNative?: { postMessage(value: unknown): void } } } } }

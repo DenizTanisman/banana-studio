@@ -13,10 +13,18 @@ const runCodec=request=>new Promise((resolve,reject)=>{
  child.stdin.on('error',fail);child.stdin.end(JSON.stringify(request));
 });
 export const decodeRaster=async bytes=>{
+ if(process.platform==='win32'){
+  const {default:sharp}=await import('sharp');
+  return sharp(bytes,{limitInputPixels:33_554_432,failOn:'error'}).autoOrient().toColourspace('srgb').ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ }
  const result=await runCodec({operation:'decode',data:bytes.toString('base64')});
  const data=Buffer.from(result.data,'base64');if(!Number.isInteger(result.width)||!Number.isInteger(result.height)||data.length!==result.width*result.height*4)throw new Error('Invalid macOS image response.');
  return {data,info:{width:result.width,height:result.height,channels:4}};
 };
 export const encodeRasterPNG=async(pixels,width,height)=>{
+ if(process.platform==='win32'){
+  const {default:sharp}=await import('sharp');
+  return sharp(pixels,{raw:{width,height,channels:4}}).png().toBuffer();
+ }
  const result=await runCodec({operation:'encode',data:Buffer.from(pixels).toString('base64'),width,height});return Buffer.from(result.data,'base64');
 };

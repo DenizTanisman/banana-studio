@@ -45,6 +45,8 @@ release-artifacts/
 *.sqlite*
 *.db
 *.xcarchive/
+desktop/windows/bin/
+desktop/windows/obj/
 supabase/.temp/
 
 # Apple distribution credentials

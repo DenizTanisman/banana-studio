@@ -125,7 +125,7 @@ The script deliberately refuses its placeholder and unverified/nonexistent accou
 5. Check that Vercel lists the `banana-image-jobs` queue trigger and the `/api/image-job-sweep` Cron from `vercel.json`.
 6. If using YouTube, add all keys described in the [YouTube feature table](models.md#video-and-youtube), then test lookup and analysis separately.
 
-Your web workspace is now usable from its URL on Windows, Mac and mobile browsers. It is independent of the standalone Mac database. As its owner, monitor provider usage, storage, backups and hosting limits.
+Your web workspace is now usable from its URL on Windows, Mac and mobile browsers. It is independent of the standalone desktop database. As its owner, monitor provider usage, storage, backups and hosting limits.
 
 ## Troubleshooting
 

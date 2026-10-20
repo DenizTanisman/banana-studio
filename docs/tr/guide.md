@@ -84,7 +84,7 @@ Analiz, süresi bilinen, yayımlanmış ve en fazla 2,5 saatlik videoları kabul
 | Seedance 2.0 / 2.5 Relaxed | Metin, görsel ve referanslarla üretim; desteklenen edit/uzatma kontrolleri. Seedance 2.5 first/last frame modunda ilk ve son kare olarak işaretlenmiş **iki durağan görsel** kullanılır. |
 | MiniMax H3 Max | Text to Video Max, Image to Video Max, Reference to Video Max, Extend Video Max, Lip Sync Max ve Recast. |
 
-Arayüz girdileri kontrol eder, moda uygun kontrolleri gösterir. Bazı video referanslarının hazırlanması ayrıca fal.ai gerektirir. İşler sürerken Mac uygulamasını açık tut. Webde OpenAI görsel işleri için kalıcı kuyruk vardır; diğer servislerin kendi iş kayıtları ve takip akışları kullanılır. Zaman aşımı, ücretli isteğin hiç kabul edilmediği anlamına gelmez. Yeniden göndermeden önce işi/sonucu kontrol et.
+Arayüz girdileri kontrol eder, moda uygun kontrolleri gösterir. Bazı video referanslarının hazırlanması ayrıca fal.ai gerektirir. İşler sürerken masaüstü uygulamasını açık tut. Webde OpenAI görsel işleri için kalıcı kuyruk vardır; diğer servislerin kendi iş kayıtları ve takip akışları kullanılır. Zaman aşımı, ücretli isteğin hiç kabul edilmediği anlamına gelmez. Yeniden göndermeden önce işi/sonucu kontrol et.
 
 [![Gerçek video üretimi önizlemesi](../assets/video-preview.gif)](https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4)
 

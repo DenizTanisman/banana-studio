@@ -1,4 +1,5 @@
 import { SavedReferenceImages } from './SavedReferenceImages';
+import { getClipboardImages } from '../lib/references/clipboardImages';
 import { displayReferencePrompt, storeReferencePrompt } from '../lib/references/dynamicReferences';
 import { getStableImageTag } from '../lib/references/referenceTokens';
 import { personColor } from './PersonAssignment';
@@ -1272,17 +1273,7 @@ export const Controls: React.FC<ControlsProps> = ({
 
   // Handle clipboard paste for images
   const handlePaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    
-    const imageFiles: File[] = [];
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) imageFiles.push(file);
-      }
-    }
+    const imageFiles = getClipboardImages(e.clipboardData);
     
     if (imageFiles.length > 0) {
       e.preventDefault(); // Prevent default paste behavior for images

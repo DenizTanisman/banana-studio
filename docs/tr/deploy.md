@@ -125,7 +125,7 @@ Script, örnek adresi ve doğrulanmamış/bulunmayan hesapları özellikle redde
 5. Vercel'de `vercel.json` içindeki `banana-image-jobs` kuyruk tetikleyicisinin ve `/api/image-job-sweep` Cron'unun göründüğünü kontrol et.
 6. YouTube kullanacaksan [özellik tablosundaki](models.md#video-ve-youtube) tüm anahtarları ekle; arama ve analizi ayrı dene.
 
-Web alanın artık adresinden Windows, Mac ve mobil tarayıcılarla kullanılabilir. Bağımsız Mac veritabanından ayrıdır. Alan sahibi olarak servis kullanımını, depolamayı, yedekleri ve barındırma limitlerini takip et.
+Web alanın artık adresinden Windows, Mac ve mobil tarayıcılarla kullanılabilir. Bağımsız masaüstü veritabanından ayrıdır. Alan sahibi olarak servis kullanımını, depolamayı, yedekleri ve barındırma limitlerini takip et.
 
 ## Sorun giderme
 

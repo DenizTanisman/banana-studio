@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { getClipboardImages } from '../lib/references/clipboardImages';
 import { AlertTriangle, ArrowRight, Check, Image as ImageIcon, ImagePlus, Loader2, Pencil, RotateCcw, Sparkles, Wand2, X } from 'lucide-react';
 import { displayReferencePrompt, storeReferencePrompt } from '../lib/references/dynamicReferences';
 import { getStableImageTag } from '../lib/references/referenceTokens';
@@ -259,7 +260,7 @@ export const GalleryImageEditor: React.FC<GalleryImageEditorProps> = ({ image, i
         </button>
         <textarea ref={promptRef} value={displayPrompt} onChange={handlePromptChange} disabled={busy} aria-label="Edit prompt" aria-autocomplete="list" aria-controls={mention ? mentionListId : undefined} aria-activedescendant={mention && mentionOptions.length ? `${mentionListId}-${mentionOptions[mentionIndex % mentionOptions.length].reference.id}` : undefined} placeholder="What would you like to change? Type @ to use a reference." spellCheck={false} className={PROMPT_TEXTAREA_CLASS} style={{ height: `${promptHeight}px`, minHeight: '96px', maxHeight: 'min(600px, calc(100dvh - 17.5rem))', outline: 'none', boxShadow: 'none' }}
           onPaste={(event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-            const files = Array.from<DataTransferItem>(event.clipboardData.items).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter((file): file is File => file != null);
+            const files = getClipboardImages(event.clipboardData);
             if (files.length) { event.preventDefault(); void addReferences(files); }
           }}
           onKeyDown={event => {

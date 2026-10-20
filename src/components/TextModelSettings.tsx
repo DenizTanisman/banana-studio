@@ -31,7 +31,7 @@ export const TextModelSettings: React.FC = () => {
     setBusy(scope); setError(''); setMessage('');
     try {
       apply(await saveTextPreferences(scope, { model: selectedModel, thinkingLevel, reasoningEffort }));
-      setMessage(isLocalWorkspace() ? 'Saved on this Mac. New requests will use these settings.' : scope === 'all' ? 'Saved for all users. New requests will use these settings.' : 'Saved for your account on all devices.');
+      setMessage(isLocalWorkspace() ? 'Saved on this computer. New requests will use these settings.' : scope === 'all' ? 'Saved for all users. New requests will use these settings.' : 'Saved for your account on all devices.');
     } catch (error) { setError(error instanceof Error ? error.message : 'Unable to save settings.'); }
     finally { setBusy(null); }
   };

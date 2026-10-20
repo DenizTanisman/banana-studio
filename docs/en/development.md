@@ -2,7 +2,7 @@
 
 [Home](../../README.md) · [Türkçe](../tr/development.md) · [Web deployment](deploy.md) · [Release procedure](../RELEASING.md)
 
-Banana Studio has one React interface and two workspace backends. The standalone Mac app replaces hosted authentication, database, storage and queue adapters with local implementations; it does not embed a configured Supabase project. This repository starts an independent installation and contains no production database or private history.
+Banana Studio has one React interface and two workspace backends. The standalone desktop app replaces hosted authentication, database, storage and queue adapters with local implementations; it does not embed a configured Supabase project. This repository starts an independent installation and contains no production database or private history.
 
 ## Architecture
 
@@ -121,4 +121,21 @@ Update both language guides and model tables. Check error/retry behavior and tas
 
 Fork, make a focused branch, explain the user-visible change and send a pull request with relevant verification. Do not upload private galleries, prompts, real account settings, databases, environment files or provider keys in commits, issues, screenshots or artifacts. Documentation screenshots must use an isolated demo workspace; see [artwork provenance](../assets/README.md).
 
-MIT covers this application's source; dependencies keep their own notices, and AI providers have their own terms. Follow [RELEASING.md](../RELEASING.md) for packaging, licensing, signed archive/feed verification and an actual update test. Fork maintainers need their own bundle ID, Keychain service, Sparkle signing keys and release URLs. The upstream public key does not let you sign updates. No native Windows package is currently built by this repository.
+MIT covers this application's source; dependencies keep their own notices, and AI providers have their own terms. Follow [RELEASING.md](../RELEASING.md) for packaging, licensing, signed archive/feed verification and an actual update test. Fork maintainers need their own bundle ID, Keychain service, Sparkle signing keys and release URLs. The upstream public key does not let you sign updates. Windows packaging and verification run on a Windows CI runner. See the platform guide for the remaining native differences.
+
+## Build the Windows app
+
+On Windows x64, install Node 24 and .NET SDK 8.0.426, then run:
+
+```sh
+npm ci --ignore-scripts
+npm test
+npm run typecheck
+npm run build
+npm run build:desktop
+node scripts/fetch-node-runtime.mjs
+node scripts/package-windows.mjs
+node scripts/test-local-generation.mjs
+```
+
+The app is assembled under `.build/staging-windows/Banana Studio/`. Keep all files together. See [platform behavior](desktop-parity.md) and the [release procedure](../RELEASING.md).

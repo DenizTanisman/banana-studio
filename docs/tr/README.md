@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="../../README.md">English</a> · <strong>Türkçe</strong> ·
-  <a href="https://github.com/orkunisitmak/banana-studio/releases/latest">Mac için indir</a> ·
+  <a href="https://github.com/orkunisitmak/banana-studio/releases/latest">Mac / Windows indir</a> ·
   <a href="#özellikler">Özellikler</a> · <a href="#web-kurulumu">Web kurulumu</a>
 </p>
 
@@ -14,7 +14,7 @@
 
 <p align="center"><sub>Proje sahibinin hesabındaki gerçek üretimler ve arayüz görüntüleri, izniyle paylaşılmıştır. <a href="../assets/README.md">Demolar hakkında</a></sub></p>
 
-**Banana Studio; görsel üretimi, seçili alan düzenleme, kapak planlama ve video üretimini aynı galeride toplar.** Bir cümleyle, referans görsellerle veya YouTube videosuyla başla. Brainstorm ile farklı fikirler keşfet, Enhance ile talimatını geliştir, sonuçları üret ve karşılaştır. Mac uygulamasını kullanmak için kod yazman gerekmez.
+**Banana Studio; görsel üretimi, seçili alan düzenleme, kapak planlama ve video üretimini aynı galeride toplar.** Bir cümleyle, referans görsellerle veya YouTube videosuyla başla. Brainstorm ile farklı fikirler keşfet, Enhance ile talimatını geliştir, sonuçları üret ve karşılaştır. Mac veya Windows uygulamasını kullanmak için kod yazman gerekmez.
 
 Uygulama [MIT lisansıyla](../../LICENSE) ücretsizdir. Yapay zekâ servisleri API kullanımını ayrıca ücretlendirir; model kredisi dahil değildir. Üretim için internet bağlantısı gerekir.
 
@@ -91,7 +91,7 @@ MiniMax H3 Max modları: **Text to Video Max · Image to Video Max · Reference 
 | **İşler ve geçmiş** | İlerleme, bildirimler, tamamlanan sonuçlar ve kurtarılabilen iş bilgileri; webde OpenAI görsel işleri kalıcı kuyruk kullanır. |
 | **Üretim detayları** | Mevcut prompt, referans, boyut, model, kalite, maliyet, süre, hazırlama modeli/düşünme seviyesi ve kayıtlı edit katmanları/kaynağı. Eski kayıtlarda bazı alanlar bulunmayabilir. |
 | **İndirme ve paylaşım** | Görsel/video indir. Web alanında tamamlanmış görselleri görmek ve indirmek için süreli herkese açık klasör bağlantıları da oluşturulabilir. |
-| **Çalışma alanı yönetimi** | Webde hesap erişimi ve sahip/yönetici kontrolleri; bağımsız Mac uygulamasında yerel çalışma alanı. |
+| **Çalışma alanı yönetimi** | Webde hesap erişimi ve sahip/yönetici kontrolleri; bağımsız masaüstü uygulamasında yerel çalışma alanı. |
 
 [Görselli kullanım rehberini aç →](guide.md)
 
@@ -99,12 +99,12 @@ MiniMax H3 Max modları: **Text to Video Max · Image to Video Max · Reference 
 
 | Cihazın | Bugün sunulan sürüm | Buradan başla |
 | --- | --- | --- |
-| Apple Silicon işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-arm64.zip) · [Kurulum rehberi](desktop.md) |
-| Intel işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-x64.zip) · [Kurulum rehberi](desktop.md) |
-| Windows | Tarayıcı üzerinden web sürümü; **henüz yerel Windows kurulum paketi yayımlanmadı** | Kendi veya ekibinin kurduğu web adresini aç. [Web kurulumu](deploy.md) |
+| Apple Silicon işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-arm64.zip) · [Kurulum rehberi](desktop.md) |
+| Intel işlemcili Mac | Bağımsız uygulama, macOS 13.5+ | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-x64.zip) · [Kurulum rehberi](desktop.md) |
+| Windows 10/11, 64-bit Intel/AMD | Bağımsız taşınabilir uygulama | [İndir](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-windows-x64.zip) · [Kurulum rehberi](desktop.md#windows-indir-ve-aç) |
 | Diğer bilgisayarlar, telefon ve tablet | Tarayıcı üzerinden web sürümü | Kurulmuş web adresini aç; erişimi ve servis anahtarlarını web alanının sahibi yönetir. |
 
-**Mac'te hızlı başlangıç:** indir → zip'i aç → Applications / Uygulamalar'a taşı → aç → **Provider keys** → modelin anahtarını gir → üret. Bağımsız uygulamada **Supabase, Vercel, Google ile giriş veya ayrıca Node kurulumu gerekmez**. Galeri Mac'inde, API anahtarları macOS Anahtar Zinciri'nde tutulur. Üretim sürerken uygulamayı açık tut; pencereyi küçültebilirsin. [İlk açılış izinleri, güncelleme ve yedekleme →](desktop.md)
+**Masaüstünde hızlı başlangıç:** indir → zip'i ayıkla → aç (Mac'te önce Uygulamalar'a taşı) → **Provider keys** → modelin anahtarını gir → üret. Bağımsız uygulamada **Supabase, Vercel, Google ile giriş veya ayrıca Node kurulumu gerekmez**. Galeri bilgisayarında; anahtarlar Mac'te Anahtar Zinciri'nde, Windows'ta Credential Manager'da tutulur. Üretim sürerken uygulamayı açık tut; pencereyi küçültebilirsin. [İlk açılış izinleri, güncelleme ve yedekleme →](desktop.md)
 
 ## Modeller ve API anahtarları
 
@@ -126,9 +126,9 @@ Varsayılan görsel modeli **GPT Image 2.5**, yaratıcı metin modeli **Opus 5.5
 
 ## Hangi sistemlerle çalışıyor?
 
-Ortak arayüz **React + TypeScript + Vite** ile hazırlanır. Mac kabuğu **AppKit + WKWebView** kullanır; kendi **Node.js** sunucusunu taşır, verileri **SQLite + yerel dosyalara**, anahtarları **Anahtar Zinciri'ne** kaydeder, **Sparkle** ile güncellenir. Web sürümü **Vercel Functions / Queues / Cron** ve **Supabase Postgres / Auth / özel Storage** kullanır; Google ile giriş yapılır.
+Ortak arayüz **React + TypeScript + Vite** ile hazırlanır. Mac kabuğu **AppKit + WKWebView** kullanır; kendi **Node.js** sunucusunu taşır, verileri **SQLite + yerel dosyalara**, anahtarları **Anahtar Zinciri'ne** kaydeder, **Sparkle** ile güncellenir. Windows kabuğu **WinForms + WebView2**, aynı Node/SQLite çalışma alanı ve **Windows Credential Manager** kullanır. Web sürümü **Vercel Functions / Queues / Cron** ve **Supabase Postgres / Auth / özel Storage** kullanır; Google ile giriş yapılır.
 
-İşlemde kullanılan prompt ve referanslar ilgili sağlayıcıya gönderilir. Masaüstü ve web galerileri ayrıdır; Mac uygulaması otomatik bulut senkronizasyonu yapmaz. [Veri sınırları](../../SECURITY.md) · [Mimari ve geliştirici kurulumu](development.md) · [Yayın prosedürü](../RELEASING.md)
+İşlemde kullanılan prompt ve referanslar ilgili sağlayıcıya gönderilir. Masaüstü ve web galerileri ayrıdır; Masaüstü uygulamaları otomatik bulut senkronizasyonu yapmaz. [Veri sınırları](../../SECURITY.md) · [Mimari ve geliştirici kurulumu](development.md) · [Yayın prosedürü](../RELEASING.md)
 
 <a id="web-kurulumu"></a>
 

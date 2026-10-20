@@ -11,7 +11,7 @@ const rules = [
   ['signed-media-link', /https?:\/\/[^\s"'<>]+\/storage\/v1\/(?:object|render\/image)\/sign\/[^\s"'<>]+[?&]token=[A-Za-z0-9_.-]{25,}/],
 ];
 const forbiddenPath = /(?:^|\/)(?:\.env(?:\..*)?|outputs?|\.local-runtime|\.local-data|\.vercel|\.DS_Store)(?:\/|$)|\.(?:p12|pfx|p8|pem|key|csr|cer|crt|provisionprofile|sqlite(?:3)?|db|log|dmg|zip)$/i;
-const ignoredDirectories = new Set(['.git', 'node_modules', 'dist', '.build', 'DerivedData', 'release-artifacts']);
+const ignoredDirectories = new Set(['.git', 'node_modules', 'dist', '.build', 'DerivedData', 'release-artifacts', 'bin', 'obj']);
 
 /** Reports rule IDs and paths only. Never print matching credential values. */
 export function inspectContent(name, bytes) {

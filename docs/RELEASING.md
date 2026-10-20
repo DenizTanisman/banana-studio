@@ -1,4 +1,14 @@
-# macOS release procedure
+# Desktop release procedure
+
+## Windows community archive
+
+The verification workflow builds Windows x64 on `windows-2022`, tests the shared workspace and an isolated Credential Manager entry, runs the packaged mocked generation/protected edit, then uploads `prepared-windows-x64`. The archive includes the self-contained .NET application, pinned Node runtime, shared web/server build and sharp's installed runtime dependencies with licenses. No user data or provider key is included. The archive is unsigned; do not claim Authenticode validation or automatic updates.
+
+Download the artifact from the verified source commit. Confirm `verification-windows-x64.json` matches the zip hash and commit before attaching both to the release. Test interactive clipboard, keyboard, Library and image/video preview in a Windows session. CI does not claim to perform that interactive acceptance test. A tester needing only Windows can download the portable zip, extract all files together and run `BananaStudio.exe`. Document the WebView2 Runtime requirement.
+
+Keep Mac assets and signed feeds on the latest release too; publishing a Windows-only latest release would interrupt the Mac update URL.
+
+## macOS release procedure
 
 Banana Studio supports community releases without Apple notarization, as well as optional Developer ID signed and notarized releases. Development builds disable updates and remain for local testing only. Community releases keep Sparkle's signed-feed and archive verification enabled.
 

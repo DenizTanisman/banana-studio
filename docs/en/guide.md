@@ -6,13 +6,13 @@ Banana Studio brings the steps of a creative project into one workspace: gather 
 
 ## Choose your workspace
 
-For personal work on a Mac, use the [standalone download](desktop.md). It starts a local gallery and asks only for the provider keys you need. You do not create a Banana Studio account or set up a database.
+For personal work on a Mac or Windows PC, use the [standalone download](desktop.md). It starts a local gallery and asks only for the provider keys you need. You do not create a Banana Studio account or set up a database.
 
-For a shared browser workspace, including Windows users, use a [self-hosted web deployment](deploy.md). Its owner manages Google sign-in, access and server API keys. Desktop and web galleries are separate; there is no automatic transfer between them.
+For a shared browser workspace, use a [self-hosted web deployment](deploy.md). Its owner manages Google sign-in, access and server API keys. Desktop and web galleries are separate; there is no automatic transfer between them.
 
 ## Make your first image
 
-1. Open **Provider keys** in the Mac app, or ask your web workspace owner to configure a provider.
+1. Open **Provider keys** in the desktop app, or ask your web workspace owner to configure a provider.
 2. Add the appropriate key. GPT Image 2.5, for example, uses an OpenAI API key.
 3. Select image generation and a configured image model.
 4. Describe your idea: “A warm editorial illustration of a mountain cabin at sunrise, simple shapes, wide composition.”
@@ -84,7 +84,7 @@ Choose a video model first: supported modes, durations, sizes and inputs differ.
 | Seedance 2.0 / 2.5 Relaxed | Text, image and reference-based generation, plus supported edit/extend controls. Seedance 2.5 first/last-frame mode uses **two still images**, tagged as first and last frame. |
 | MiniMax H3 Max | Text to Video Max, Image to Video Max, Reference to Video Max, Extend Video Max, Lip Sync Max and Recast. |
 
-The interface validates inputs and shows mode-specific controls. Some reference-video preprocessing also needs fal.ai. Keep the Mac app open during jobs. The hosted version has a durable queue for OpenAI image jobs; other providers use their task histories and polling. A timeout does not prove that a paid request was never accepted. Check the task/result before submitting it again.
+The interface validates inputs and shows mode-specific controls. Some reference-video preprocessing also needs fal.ai. Keep the desktop app open during jobs. The hosted version has a durable queue for OpenAI image jobs; other providers use their task histories and polling. A timeout does not prove that a paid request was never accepted. Check the task/result before submitting it again.
 
 [![A real generated video preview](../assets/video-preview.gif)](https://github.com/orkunisitmak/banana-studio/raw/refs/heads/main/docs/assets/video-demo.mp4)
 

@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>English</strong> · <a href="docs/tr/README.md">Türkçe</a> ·
-  <a href="https://github.com/orkunisitmak/banana-studio/releases/latest">Download for Mac</a> ·
+  <a href="https://github.com/orkunisitmak/banana-studio/releases/latest">Download for Mac / Windows</a> ·
   <a href="#features">Features</a> · <a href="#self-hosting">Web setup</a>
 </p>
 
@@ -16,7 +16,7 @@
 
 <a id="english"></a>
 
-**Banana Studio brings image generation, selected-area editing, thumbnail planning and video into one gallery.** Start with a sentence, reference images or a YouTube episode. Explore concepts with Brainstorm, refine instructions with Enhance, then generate and compare the results. You do not need to write code to use the Mac app.
+**Banana Studio brings image generation, selected-area editing, thumbnail planning and video into one gallery.** Start with a sentence, reference images or a YouTube episode. Explore concepts with Brainstorm, refine instructions with Enhance, then generate and compare the results. You do not need to write code to use the Mac or Windows app.
 
 The app is free under the [MIT license](LICENSE). AI providers bill their API usage separately; model credits are not included. Generation needs internet access.
 
@@ -93,7 +93,7 @@ MiniMax H3 Max modes: **Text to Video Max · Image to Video Max · Reference to 
 | **Jobs and history** | Progress, notifications, completed results and recoverable task information; hosted OpenAI image jobs use a durable queue. |
 | **Generation details** | Available prompts, references, dimensions, model, quality, cost, generation time, preparation model/reasoning and saved edit layers/source. Older records may have fewer fields. |
 | **Export and sharing** | Download images/videos. Hosted web workspaces also support expiring public folder links for viewing and downloading completed images. |
-| **Workspace administration** | Hosted account access and owner/admin controls; standalone Mac keeps its own local workspace. |
+| **Workspace administration** | Hosted account access and owner/admin controls; standalone desktop keeps its own local workspace. |
 
 [Read the illustrated user guide →](docs/en/guide.md)
 
@@ -101,12 +101,12 @@ MiniMax H3 Max modes: **Text to Video Max · Image to Video Max · Reference to 
 
 | Your device | Available today | Start here |
 | --- | --- | --- |
-| Mac with Apple Silicon | Standalone app, macOS 13.5+ | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-arm64.zip) · [Installation guide](docs/en/desktop.md) |
-| Mac with Intel | Standalone app, macOS 13.5+ | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.0/Banana-Studio-0.1.0-macos-x64.zip) · [Installation guide](docs/en/desktop.md) |
-| Windows | Web version in a browser; **no native Windows installer has been released** | Open your own or your team's deployed workspace. [Web setup](docs/en/deploy.md) |
+| Mac with Apple Silicon | Standalone app, macOS 13.5+ | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-arm64.zip) · [Installation guide](docs/en/desktop.md) |
+| Mac with Intel | Standalone app, macOS 13.5+ | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-macos-x64.zip) · [Installation guide](docs/en/desktop.md) |
+| Windows 10/11, 64-bit Intel/AMD | Standalone portable app | [Download](https://github.com/orkunisitmak/banana-studio/releases/download/v0.1.1/Banana-Studio-0.1.1-windows-x64.zip) · [Installation guide](docs/en/desktop.md#windows-download-and-open) |
 | Other computers, phones and tablets | Web version in a browser | Open a deployed workspace; its owner manages access and provider keys. |
 
-**Mac quick start:** download → unzip → move to Applications → open → **Provider keys** → add the key for your model → generate. The standalone app needs **no Supabase, Vercel, Google sign-in or separate Node installation**. The gallery stays on your Mac, and API keys stay in macOS Keychain. Keep the app open while jobs run; minimizing is fine. [First-open permissions, updates and backups →](docs/en/desktop.md)
+**Desktop quick start:** download → unzip → open (Mac: move to Applications first) → **Provider keys** → add the key for your model → generate. Both standalone apps need **no Supabase, Vercel, Google sign-in or separate Node installation**. The gallery stays on your computer. API keys stay in macOS Keychain or Windows Credential Manager. Keep the app open while jobs run; minimizing is fine. [First-open permissions, updates and backups →](docs/en/desktop.md)
 
 ## Models and API keys
 
@@ -128,9 +128,9 @@ The default image model is **GPT Image 2.5**; the default creative text model is
 
 ## How it is built
 
-The shared interface is **React + TypeScript + Vite**. The native Mac shell uses **AppKit + WKWebView**, bundles a **Node.js** server, saves to **SQLite + local files**, keeps credentials in **Keychain** and updates through **Sparkle**. The hosted web version uses **Vercel Functions / Queues / Cron** and **Supabase Postgres / Auth / private Storage**, with Google sign-in.
+The shared interface is **React + TypeScript + Vite**. The native Mac shell uses **AppKit + WKWebView**, bundles a **Node.js** server, saves to **SQLite + local files**, keeps credentials in **Keychain** and updates through **Sparkle**. Windows uses **WinForms + WebView2**, the same Node/SQLite workspace and **Windows Credential Manager**. The hosted web version uses **Vercel Functions / Queues / Cron** and **Supabase Postgres / Auth / private Storage**, with Google sign-in.
 
-Selected prompts and references go to the provider handling the task. Desktop and web galleries are separate; the Mac app has no automatic cloud sync. [Data boundaries](SECURITY.md) · [Architecture and developer setup](docs/en/development.md) · [Release procedure](docs/RELEASING.md)
+Selected prompts and references go to the provider handling the task. Desktop and web galleries are separate; the desktop apps have no automatic cloud sync. [Data boundaries](SECURITY.md) · [Architecture and developer setup](docs/en/development.md) · [Release procedure](docs/RELEASING.md)
 
 <a id="self-hosting"></a>
 
