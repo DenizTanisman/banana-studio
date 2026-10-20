@@ -6,7 +6,7 @@ import path from 'node:path';
 export function auditDistribution(directory,{privateMarkers=[]}={}) {
  const root=fs.realpathSync(directory),findings=[];let files=0;
  const visit=dir=>{for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
-  const file=path.join(dir,entry.name),name=path.relative(root,file);
+  const file=path.join(dir,entry.name),name=path.relative(root,file).split(path.sep).join('/');
   if(entry.isSymbolicLink()){
    const link=fs.readlinkSync(file);let target;try{target=fs.realpathSync(file);}catch{}
    if(path.isAbsolute(link)||!target||!target.startsWith(root+path.sep))findings.push({path:name,rule:'external-artifact-symlink'});continue;

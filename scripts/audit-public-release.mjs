@@ -17,7 +17,7 @@ const ignoredDirectories = new Set(['.git', 'node_modules', 'dist', '.build', 'D
 export function inspectContent(name, bytes) {
   const findings = [];
   if (name !== '.env.example' && forbiddenPath.test(name)) findings.push({ path: name, rule: 'private-file' });
-  if (/(?:^|\/)(?:node_modules|dist|dist-ssr|\.build|DerivedData|release-artifacts)(?:\/|$)/.test(name)) findings.push({path:name,rule:'tracked-build-product'});
+  if (/(?:^|\/)(?:node_modules|dist|dist-ssr|\.build|DerivedData|release-artifacts)(?:\/|$)|^desktop\/windows\/(?:bin|obj)\//.test(name)) findings.push({path:name,rule:'tracked-build-product'});
   const text = bytes.toString('utf8');
   for (const [rule, pattern] of rules) if (pattern.test(text)) findings.push({ path: name, rule });
   if (name === '.env.example') {
