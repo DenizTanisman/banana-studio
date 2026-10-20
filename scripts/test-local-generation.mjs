@@ -24,11 +24,14 @@ try {
  const preload=path.join(root,'mock-provider.mjs');
  fs.writeFileSync(preload,`import fs from 'node:fs';\nconst output=fs.readFileSync(${JSON.stringify(path.join(root,'provider.png'))}).toString('base64');\nglobalThis.fetch=async(url,options={})=>{\n if(!String(url).startsWith('https://api.openai.com/v1/images/'))throw new Error('Unexpected network request blocked by test');\n const input=JSON.parse(options.body);fs.appendFileSync(${JSON.stringify(path.join(root,'provider-calls.jsonl'))},JSON.stringify({size:input.size,hasDataURL:input.images?.[0]?.image_url?.startsWith('data:image/png;base64,'),hasCookie:!!options.headers.Cookie})+'\\n');\n return new Response(JSON.stringify({data:[{b64_json:output}],usage:{input_tokens:0,output_tokens:0}}),{status:200,headers:{'Content-Type':'application/json','x-request-id':'synthetic-request'}});\n};\n`);
  const bootstrap=randomBytes(32).toString('hex');
- child=spawn(runtime,['--import',preload,path.join(resources,'workspace/server.mjs')],{cwd:path.join(resources,'workspace'),env:runtimeEnv,stdio:['pipe','pipe','pipe']});
+ child=spawn(runtime,['--import',pathToFileURL(preload).href,path.join(resources,'workspace/server.mjs')],{cwd:path.join(resources,'workspace'),env:runtimeEnv,stdio:['pipe','pipe','pipe']});
  child.stdout.on('data',data=>output+=data);child.stderr.on('data',data=>diagnostics+=data);
  child.stdin.write(JSON.stringify({dataDirectory:path.join(root,'workspace'),webRoot:path.join(resources,'workspace/web'),bootstrap,keys:{OPENAI_API_KEY:'integration-test-only-value'}})+'\n');
  let ready;const deadline=Date.now()+15_000;
- while(Date.now()<deadline&&!ready){ready=output.split('\n').map(line=>{try{return JSON.parse(line);}catch{return null;}}).find(v=>v?.event==='ready');if(!ready)await new Promise(resolve=>setTimeout(resolve,50));}
+ while(Date.now()<deadline&&!ready&&child.exitCode===null){ready=output.split('\n').map(line=>{try{return JSON.parse(line);}catch{return null;}}).find(v=>v?.event==='ready');if(!ready)await new Promise(resolve=>setTimeout(resolve,50));}
+ // Only this isolated synthetic child has diagnostics surfaced. Its provider
+ // is mocked and its environment/data directory contain no user credentials.
+ if(!ready&&diagnostics)console.error(diagnostics.slice(0,4000));
  assert.ok(ready,'Packaged local server did not become ready.');
  const origin=ready.origin;
  const init=await fetch(origin+'/local/bootstrap',{headers:{'X-Banana-Bootstrap':bootstrap},redirect:'manual'}),cookie=init.headers.get('set-cookie').split(';')[0];
