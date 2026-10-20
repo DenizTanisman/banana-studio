@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
@@ -31,9 +32,12 @@ internal sealed class StudioWindow : Form
     {
         Text = "Banana Studio"; Width = 1400; Height = 900; MinimumSize = new Size(760, 560);
         StartPosition = FormStartPosition.CenterScreen; BackColor = Color.FromArgb(13, 17, 23);
-        var menu = new MenuStrip { BackColor = BackColor, ForeColor = Color.Gainsboro };
+        Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+        HandleCreated += (_, _) => { var dark = 1; _ = DwmSetWindowAttribute(Handle, 20, ref dark, sizeof(int)); };
+        var menu = new MenuStrip { BackColor = BackColor, ForeColor = Color.Gainsboro, Renderer = new ToolStripProfessionalRenderer(new DarkMenuColors()) };
         var file = new ToolStripMenuItem("File");
-        file.DropDownItems.Add("Provider API Keys…", null, async (_, _) => await ShowKeys());
+        var keyItem = new ToolStripMenuItem("Provider API Keys…", null, async (_, _) => await ShowKeys()) { ShortcutKeys = Keys.Control | Keys.Oemcomma, ShortcutKeyDisplayString = "Ctrl+," };
+        file.DropDownItems.Add(keyItem);
         file.DropDownItems.Add("Open Local Data Folder", null, (_, _) => Process.Start(new ProcessStartInfo(WorkspaceProcess.DataDirectory) { UseShellExecute = true }));
         file.DropDownItems.Add("Check for Updates…", null, (_, _) => OpenExternal("https://github.com/orkunisitmak/banana-studio/releases/latest"));
         file.DropDownItems.Add("Exit", null, (_, _) => Close());
@@ -44,6 +48,23 @@ internal sealed class StudioWindow : Form
         Shown += async (_, _) => await StartWorkspace();
         FormClosed += (_, _) => { workspace.Dispose(); web.Dispose(); if (profile != null) { try { Directory.Delete(profile, true); } catch (IOException) { } catch (UnauthorizedAccessException) { } } };
         workspace.Failed += () => { if (!IsDisposed && IsHandleCreated) BeginInvoke(() => ShowFailure("The local workspace stopped. Reopen Banana Studio. Your saved gallery is kept on this PC.")); };
+    }
+    [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+    private sealed class DarkMenuColors : ProfessionalColorTable
+    {
+        private static Color Background => Color.FromArgb(22, 27, 34);
+        public override Color ToolStripDropDownBackground => Background;
+        public override Color ImageMarginGradientBegin => Background;
+        public override Color ImageMarginGradientMiddle => Background;
+        public override Color ImageMarginGradientEnd => Background;
+        public override Color MenuItemSelected => Color.FromArgb(42, 47, 57);
+        public override Color MenuItemSelectedGradientBegin => MenuItemSelected;
+        public override Color MenuItemSelectedGradientEnd => MenuItemSelected;
+        public override Color MenuItemPressedGradientBegin => MenuItemSelected;
+        public override Color MenuItemPressedGradientMiddle => MenuItemSelected;
+        public override Color MenuItemPressedGradientEnd => MenuItemSelected;
+        public override Color MenuBorder => Color.FromArgb(55, 65, 81);
+        public override Color MenuItemBorder => MenuBorder;
     }
     private bool Local(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) && origin != null && uri.Scheme == origin.Scheme && uri.Host == origin.Host && uri.Port == origin.Port;
     private void OpenExternal(string url) { if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" && string.IsNullOrEmpty(uri.UserInfo)) Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
@@ -124,7 +145,7 @@ internal sealed class StudioWindow : Form
             var row = 1;
             foreach (var provider in KeyVault.Providers)
             {
-                var field = new TextBox { Width = 300, UseSystemPasswordChar = true, PlaceholderText = KeyVault.Read(provider.Name) != null ? "Saved in Credential Manager" : "Paste your API key" };
+                var field = new TextBox { Width = 300, UseSystemPasswordChar = true, BackColor = Color.FromArgb(13, 17, 23), ForeColor = Color.Gainsboro, BorderStyle = BorderStyle.FixedSingle, PlaceholderText = KeyVault.Read(provider.Name) != null ? "Saved in Credential Manager" : "Paste your API key" };
                 var remove = new CheckBox { Text = "Remove", AutoSize = true };
                 grid.Controls.Add(new Label { Text = provider.Label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row);
                 grid.Controls.Add(field, 1, row); grid.Controls.Add(remove, 2, row++); rows.Add((provider.Name, field, remove));

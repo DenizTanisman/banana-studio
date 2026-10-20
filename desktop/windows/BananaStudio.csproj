@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>BananaStudio</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../../.build/BananaStudio.ico</ApplicationIcon>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
     <WebView2UseWinRT>false</WebView2UseWinRT>

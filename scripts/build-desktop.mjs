@@ -10,3 +10,9 @@ const result=await build({entryPoints:[path.join(root,'desktop/server/main.mjs')
 });}}]});
 fs.writeFileSync(path.join(root,'.build/desktop/metafile.json'),JSON.stringify(result.metafile));
 console.log('Built the standalone workspace server.');
+// An ICO directory can contain a PNG unchanged. Reuse the existing app artwork
+// so the Windows taskbar/window and Mac Dock identify the same application.
+const png=fs.readFileSync(path.join(root,'public/icon-192.png'));
+const ico=Buffer.alloc(22);ico.writeUInt16LE(1,2);ico.writeUInt16LE(1,4);
+ico[6]=192;ico[7]=192;ico.writeUInt16LE(1,10);ico.writeUInt16LE(32,12);ico.writeUInt32LE(png.length,14);ico.writeUInt32LE(22,18);
+fs.writeFileSync(path.join(root,'.build/BananaStudio.ico'),Buffer.concat([ico,png]));
