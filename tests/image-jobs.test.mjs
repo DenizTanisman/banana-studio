@@ -59,5 +59,10 @@ test('a queued image rejected before dispatch finalizes its audit before the job
     await assert.rejects(runImageJob(auditDown,{id:'interrupted',userId:store.user.id}),/finish_openai_request could not be confirmed/);
     assert.equal(store.job('interrupted').state,'preparing');
     assert.deepEqual(ledger('interrupted'),['accepted']);
+    // Once audits can be written again, redelivery after the lease ends the job and rejects its new audit.
+    const job=store.job('interrupted');job.claimedAt=0;store.job('interrupted',job);
+    await runImageJob(db,{id:'interrupted',userId:store.user.id});
+    assert.equal(store.job('interrupted').state,'failed');
+    assert.equal(ledger('interrupted').at(-1),'rejected');
   }finally{console.warn=warn;store.close();fs.rmSync(directory,{recursive:true,force:true});if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;if(oldEnv!==undefined)process.env.VERCEL_ENV=oldEnv;if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;}
 });
