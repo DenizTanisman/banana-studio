@@ -66,4 +66,12 @@ test('a failed storage upload does not save the expiring provider URL', async t 
   f.uploadError = { message: 'Upload rejected' };
   assert.equal(await saveVideo(video, 'user-1'), undefined);
   assert.deepEqual(f.upserts, []);
+
+  // The caller's retry then saves the durable copy exactly once.
+  f.uploadError = null;
+  const saved = await saveVideo(video, 'user-1');
+  assert.equal(saved?.storagePath, 'user-1/video-1.mp4');
+  assert.equal(f.upserts.length, 1);
+  assert.equal(f.upserts[0].storage_path, 'user-1/video-1.mp4');
+  assert.notEqual(f.upserts[0].url, PROVIDER_URL);
 });
