@@ -14,14 +14,15 @@ const errorText = (value: unknown, depth = 0): string[] => {
 
 export const getEvoLinkErrorMessage = (data: unknown, fallback = 'Video generation failed'): string => {
   const value = data as any;
+  // Root status codes are a fallback, not a reason to hide task diagnostics.
+  const details = data && typeof data === 'object' && !Array.isArray(data)
+    ? { ...value, code: undefined }
+    : data;
   const candidates = [
-    ...errorText(value?.error),
-    ...errorText(value?.error_message),
-    ...errorText(value?.failure_reason),
-    ...errorText(value?.fail_reason),
+    ...(typeof data === 'object' && data !== null ? errorText(details) : []),
     ...errorText(value?.task_info),
     ...errorText(value?.status_message),
-    ...errorText(value?.message),
+    ...errorText(value?.code),
     ...(typeof data === 'string' ? errorText(data) : []),
   ];
   return candidates.find(message => !genericError.test(message)) || candidates[0] || fallback;
