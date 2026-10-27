@@ -53,10 +53,11 @@ test('a queued image rejected before dispatch finalizes its audit before the job
     }};
     await runImageJob(ordered,{id:'invalid',userId:store.user.id});
     assert.equal(store.job('invalid').state,'failed');
-    // An interrupted audit write leaves the job redeliverable instead of terminal.
-    enqueue('interrupted');let fail=true;
-    const flaky={...db,rpc:async(name,args)=>{if(name==='finish_openai_request'&&fail){fail=false;return{data:null,error:{message:'connection reset'}};}return db.rpc(name,args);}};
-    await runImageJob(flaky,{id:'interrupted',userId:store.user.id}).catch(()=>{});
-    assert.notEqual(store.job('interrupted').state,'failed');
+    // While the audit cannot be finalized, the worker reports it and the job stays redeliverable.
+    enqueue('interrupted');
+    const auditDown={...db,rpc:async(name,args)=>name==='finish_openai_request'?{data:null,error:{message:'connection reset'}}:db.rpc(name,args)};
+    await assert.rejects(runImageJob(auditDown,{id:'interrupted',userId:store.user.id}),/finish_openai_request could not be confirmed/);
+    assert.equal(store.job('interrupted').state,'preparing');
+    assert.deepEqual(ledger('interrupted'),['accepted']);
   }finally{console.warn=warn;store.close();fs.rmSync(directory,{recursive:true,force:true});if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;if(oldEnv!==undefined)process.env.VERCEL_ENV=oldEnv;if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;}
 });
