@@ -63,3 +63,21 @@ test('a failed row save is retried without moving the video again, and a later s
     assert.deepEqual([downloads, videoUploads()], [2, 2]);
   } finally { Object.assign(console, { warn, error }); globalThis.fetch = fetchImpl; }
 });
+
+test('a poster that cannot be re-signed on retry does not block the row or lose its stored path', async () => {
+  const { warn, error } = console; console.warn = console.error = () => {};
+  const fetchImpl = globalThis.fetch;
+  globalThis.__objects = new Map();
+  globalThis.fetch = async url => { globalThis.__source = String(url); return new Response(new Uint8Array(64), { status: 200, headers: { 'content-type': 'video/mp4' } }); };
+  const save = async rowFails => { globalThis.__ops = []; globalThis.__db = op => op.op === 'upsert' && rowFails ? { error: { message: 'timeout' } } : { data: null, error: null };
+    await saveVideo({ id: 'v3', url: 'https://p/v3.mp4', prompt: 'p', mediaType: 'video', createdAt: 1, videoModel: 'seedance-2.5', referenceImages: [] });
+    return globalThis.__ops.find(op => op.op === 'upsert' && !rowFails)?.value; };
+  try {
+    await save(true);
+    globalThis.__signFails = path => path === 'u1/v3_thumb.png';
+    const saved = await save(false);
+    assert.ok(saved, 'the row is saved even though the poster URL could not be renewed');
+    assert.equal(saved.storage_path, 'u1/v3.mp4');
+    assert.equal(saved.thumbnail_path, 'u1/v3_thumb.png');
+  } finally { globalThis.__signFails = null; Object.assign(console, { warn, error }); globalThis.fetch = fetchImpl; }
+});
