@@ -147,6 +147,8 @@ export class LocalWorkspace {
       if(job.dispatchedAt)return {action:'observe',claim:job.claim,audit:job.audit,dispatchedAt:job.dispatchedAt};
       if(job.state==='preparing'&&job.claimedAt>Date.now()-60_000)return {action:'wait',retryAfter:5};
       if(job.retryAt>Date.now())return {action:'wait',retryAfter:Math.ceil((job.retryAt-Date.now())/1000)};
+      // As claim_image_job in Postgres: a stale preparation's audit is rejected before re-claiming.
+      if(job.state==='preparing'&&job.audit)this.workerOperation('finish_openai_request',{p_id:job.audit,p_outcome:'rejected'});
       job.claim=a.p_claim;job.claimedAt=Date.now();job.audit=randomUUID();job.state='preparing';this.db.prepare('INSERT INTO ledger VALUES (?,?)').run(job.audit,JSON.stringify({id:job.audit,generationId:job.id,kind:'image',state:'accepted',at:Date.now()}));this.job(job.id,job);return {action:'prepare',payload:this.materialize(job.payload),audit:job.audit,claim:job.claim};
     }
     if(name==='dispatch_image_job') {if(job.claim!==a.p_claim||job.dispatchedAt)return false;job.dispatchedAt=new Date().toISOString();job.state='dispatched';this.job(job.id,job);const row=this.get('generations',job.id);if(row)this.put('generations',job.id,{...row,status:'processing',metadata:{...row.metadata,...a.p_metadata,imageJobState:'dispatched'}});return true;}
