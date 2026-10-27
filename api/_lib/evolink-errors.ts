@@ -15,13 +15,9 @@ const errorText = (value: unknown, depth = 0): string[] => {
 export const getEvoLinkErrorMessage = (data: unknown, fallback = 'Video generation failed'): string => {
   const value = data as any;
   const candidates = [
-    ...errorText(value?.error),
-    ...errorText(value?.error_message),
-    ...errorText(value?.failure_reason),
-    ...errorText(value?.fail_reason),
+    ...(typeof data === 'object' && data !== null ? errorText(data) : []),
     ...errorText(value?.task_info),
     ...errorText(value?.status_message),
-    ...errorText(value?.message),
     ...(typeof data === 'string' ? errorText(data) : []),
   ];
   return candidates.find(message => !genericError.test(message)) || candidates[0] || fallback;
