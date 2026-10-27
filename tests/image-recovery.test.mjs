@@ -18,12 +18,17 @@ const compiled = await build({entryPoints:['api/openai-image-recover.ts'],absWor
 const { default: recover } = await import('data:text/javascript;base64,'+Buffer.from(compiled.outputFiles[0].text).toString('base64'));
 const recoverRow = async image_model => {
   globalThis.__row = { id: 'gen1', image_model, status: 'failed', metadata: { openaiImageOptions: { outputFormat: 'png' } } };
-  let status = 0; const res = { setHeader() {}, status(value) { status = value; return this; }, json() { return this; }, end() { return this; } };
+  let status = 0, body; const res = { setHeader() {}, status(value) { status = value; return this; }, json(value) { body = value; return this; }, end() { return this; } };
   await recover({ method: 'POST', headers: {}, body: { id: 'gen1' } }, res);
-  return status;
+  return { status, body };
 };
 
 test('every model saved by the durable image pipeline can recover its stored file', async () => {
-  for (const model of ['gpt-image-2.5-sunburst', 'gemini-nano-banana-2.1', 'gemini-3-pro-image-preview']) assert.equal(await recoverRow(model), 200, model);
-  assert.equal(await recoverRow('gemini-3.1-flash-image-preview'), 404);
+  for (const model of ['gpt-image-2.5-sunburst', 'gemini-nano-banana-2.1', 'gemini-3-pro-image-preview']) {
+    const result = await recoverRow(model);
+    assert.equal(result.status, 200, model);
+    assert.equal(result.body.url, 'https://media.example/openai/u1/gen1.png', model);
+    assert.equal(result.body.storagePath, 'openai/u1/gen1.png', model);
+  }
+  assert.equal((await recoverRow('gemini-3.1-flash-image-preview')).status, 404);
 });
