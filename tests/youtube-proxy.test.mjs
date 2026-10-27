@@ -76,6 +76,27 @@ try {
     assert.ok(buildYoutubeRequestUrl('search', serverKey) instanceof URL);
   });
 
+  test('authenticated handler enforces the server key and rejects unsupported endpoints before fetch',async t=>{
+    const previous=process.env.YOUTUBE_API_KEY;
+    process.env.YOUTUBE_API_KEY='test-key';
+    t.after(()=>{if(previous===undefined)delete process.env.YOUTUBE_API_KEY;else process.env.YOUTUBE_API_KEY=previous;});
+    const upstream=t.mock.method(globalThis,'fetch',async()=>({ok:true,status:200,text:async()=>JSON.stringify({items:[]})}));
+    const response=()=>({statusCode:200,status(code){this.statusCode=code;return this;},json(value){this.body=value;return this;}});
+    const valid=response();
+    await handler({method:'POST',headers:{},body:{endpoint:'videos',params:{key:'client-key',KEY:'client-key',part:'snippet',maxResults:'100'}}},valid);
+    assert.equal(valid.statusCode,200);
+    assert.deepEqual(valid.body,{items:[]});
+    assert.equal(upstream.mock.callCount(),1);
+    const url=new URL(upstream.mock.calls[0].arguments[0]);
+    assert.equal(url.searchParams.get('key'),'test-key');
+    assert.equal(url.searchParams.get('KEY'),null);
+    assert.equal(url.searchParams.get('maxResults'),'50');
+    const invalid=response();
+    await handler({method:'POST',headers:{},body:{endpoint:'unsupported'}},invalid);
+    assert.equal(invalid.statusCode,400);
+    assert.equal(upstream.mock.callCount(),1);
+  });
+
   test('upstream failures never disclose repeated credentials to logs or clients',async t=>{
     const previous=process.env.YOUTUBE_API_KEY,key='synthetic-youtube-credential';
     process.env.YOUTUBE_API_KEY=key;
