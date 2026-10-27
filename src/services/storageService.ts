@@ -1174,6 +1174,9 @@ const mergeVideoMetadata = (existing: Record<string, any>, incoming: Record<stri
   return merged;
 };
 
+// A retry after a failed row save reuses the stored file instead of moving the video again.
+const completedVideoTransfers = new Map<string, { source: string; storagePath: string; thumbnailPath: string | null }>();
+
 export const saveVideo = async (
   media: GeneratedMedia,
   expectedUserId?: string,
@@ -1201,7 +1204,17 @@ export const saveVideo = async (
     let thumbnailUrl = media.thumbnailUrl;
     let uploadedThumbnailPath: string | null = media.thumbnailPath || null;
 
-    if (!videoUrl.startsWith('data:')) {
+    const transferKey = `${userId}:${media.id}`;
+    const previousTransfer = completedVideoTransfers.get(transferKey);
+    const reusedUrl = previousTransfer?.source === videoUrl ? await createMediaAccessUrl(previousTransfer.storagePath) : undefined;
+    if (previousTransfer && reusedUrl) {
+      publicUrl = reusedUrl;
+      uploadedStoragePath = previousTransfer.storagePath;
+      if (previousTransfer.thumbnailPath) {
+        const reusedThumbnailUrl = await createMediaAccessUrl(previousTransfer.thumbnailPath);
+        if (reusedThumbnailUrl) { thumbnailUrl = reusedThumbnailUrl; uploadedThumbnailPath = previousTransfer.thumbnailPath; }
+      }
+    } else if (!videoUrl.startsWith('data:')) {
       try {
         const response = await fetch(await refreshMediaAccessUrl(videoUrl, false));
         if (!response.ok) {
@@ -1266,6 +1279,7 @@ export const saveVideo = async (
         }
         publicUrl = storagePublicUrl;
         uploadedStoragePath = storagePath;
+        completedVideoTransfers.set(transferKey, { source: videoUrl, storagePath, thumbnailPath: null });
 
         if (thumbnailBlob) {
           await assertSameUser();
@@ -1283,6 +1297,7 @@ export const saveVideo = async (
             if (savedThumbnailUrl) {
               thumbnailUrl = savedThumbnailUrl;
               uploadedThumbnailPath = thumbnailPath;
+              completedVideoTransfers.set(transferKey, { source: videoUrl, storagePath, thumbnailPath });
             }
           }
         }
@@ -1423,6 +1438,7 @@ export const saveVideo = async (
       console.error("saveVideo DB upsert failed:", dbError.code, dbError.message, JSON.stringify(dbError));
       return undefined;
     }
+    completedVideoTransfers.delete(transferKey);
 
     return {
       publicUrl,
