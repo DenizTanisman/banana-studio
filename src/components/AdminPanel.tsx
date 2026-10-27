@@ -49,6 +49,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, onViewU
   const [accessError, setAccessError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const loadAccessData = async () => {
     const emails = await getAuthorizedEmails();
     setAuthorizedEmails(emails);

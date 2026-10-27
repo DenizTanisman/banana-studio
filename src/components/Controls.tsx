@@ -1531,10 +1531,15 @@ export const Controls: React.FC<ControlsProps> = ({
           handleBrainstorm();
           return;
         }
-        const canGen = isH3VideoConfig ? !getH3MaxInputError(config) : config.prompt.trim() || config.referenceImages.length > 0;
-        if (canGen && activeRequests === 0 && !hasStaleEnhancedPrompt) {
+        if (canGenerate) {
           handleGenerate();
         }
+        return;
+      }
+
+      if (e.key === 'Escape' && isBrainstormPanelOpen) {
+        e.preventDefault();
+        setIsBrainstormPanelOpen(false);
         return;
       }
 
@@ -1703,6 +1708,13 @@ export const Controls: React.FC<ControlsProps> = ({
   };
 
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (canGenerate) {
+        e.preventDefault();
+        handleGenerate();
+      }
+      return;
+    }
     if (!h3PromptSupported) return;
     if (mentionState.active && (config.referenceImages.length > 0 || (config.referenceVideos?.length || 0) > 0 || (config.referenceAudios?.length || 0) > 0)) {
         const groupMentions = findPersonMentions(config.referenceImages, mentionState.query).map(group => ({ ...group, type: 'group' as const, count: group.images.length }));
