@@ -1710,7 +1710,8 @@ export const deleteImages = async (medias: GeneratedMedia[]): Promise<void> => {
 
 export const toggleFavorite = async (id: string, isFavorite: boolean): Promise<void> => {
   if (supabase) {
-    await supabase.from('generations').update({ is_favorite: isFavorite }).eq('id', id);
+    const { error } = await supabase.from('generations').update({ is_favorite: isFavorite }).eq('id', id);
+    if (error) throw new Error(`Favorite could not be saved: ${error.message}`);
   }
   try {
     const db = await openDB();
