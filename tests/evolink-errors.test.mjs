@@ -42,6 +42,13 @@ test('root status codes never hide specific task or status diagnostics',()=>{
   assert.equal(getEvoLinkErrorMessage({code:'E_FAILED'}),'E_FAILED');
 });
 
+test('task diagnostics precede root messages and validation arrays expose msg',()=>{
+  assert.equal(getEvoLinkErrorMessage({message:'Task failed',task_info:{failure_reason:'GPU memory exhausted'}}),'GPU memory exhausted');
+  assert.equal(getEvoLinkErrorMessage({message:'Task failed',status_message:'Reference video is invalid'}),'Reference video is invalid');
+  assert.equal(getEvoLinkErrorMessage({message:'Specific root message'}),'Specific root message');
+  assert.equal(getEvoLinkErrorMessage({detail:[{loc:['body','prompt'],msg:'Field required',type:'missing'}]}),'Field required');
+});
+
 test('describeEvoLinkFailure formats context, detail, and taskId accurately', () => {
   const result = describeEvoLinkFailure(
     { detail: 'Yüz tespit edilemedi' },

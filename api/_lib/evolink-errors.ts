@@ -8,20 +8,21 @@ const errorText = (value: unknown, depth = 0): string[] => {
   if (Array.isArray(value)) return value.flatMap(item => errorText(item, depth + 1));
   if (typeof value !== 'object') return [];
   const data = value as Record<string, unknown>;
-  return ['detail', 'details', 'reason', 'error_message', 'failure_reason', 'fail_reason', 'error', 'message', 'description', 'code']
+  return ['detail', 'details', 'reason', 'error_message', 'failure_reason', 'fail_reason', 'error', 'message', 'description', 'msg', 'code']
     .flatMap(key => errorText(data[key], depth + 1));
 };
 
 export const getEvoLinkErrorMessage = (data: unknown, fallback = 'Video generation failed'): string => {
   const value = data as any;
-  // Root status codes are a fallback, not a reason to hide task diagnostics.
+  // Root messages and status codes must not hide task-specific diagnostics.
   const details = data && typeof data === 'object' && !Array.isArray(data)
-    ? { ...value, code: undefined }
+    ? { ...value, message: undefined, code: undefined }
     : data;
   const candidates = [
     ...(typeof data === 'object' && data !== null ? errorText(details) : []),
     ...errorText(value?.task_info),
     ...errorText(value?.status_message),
+    ...errorText(value?.message),
     ...errorText(value?.code),
     ...(typeof data === 'string' ? errorText(data) : []),
   ];
