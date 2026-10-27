@@ -19,7 +19,16 @@ test('a queued image whose reference was removed fails once without dispatch; te
     const db=store.client(true),ledger=()=>store.db.prepare('SELECT payload FROM ledger').all().map(r=>JSON.parse(r.payload));
     const enqueue=async(id,key)=>{await store.upload(key,Buffer.from('synthetic'));store.workerRpc('enqueue_image_job',{p_id:id,p_metadata:{},p_payload:{id,model:'gpt-image-2.5-sunburst',provider:'openai',prompt:'p',displayPrompt:'p',aspectRatio:'1:1',resolution:'1K',options:{},referenceImages:[{id:'r1',data:store.mediaUrl(key),mimeType:'image/png'}],privateReferencePaths:[key],folderId:null}});};
     await enqueue('gone','refs/gone.png');fs.rmSync(store.mediaPath('refs/gone.png'));
-    await runImageJob(db,{id:'gone',userId:store.user.id});await runImageJob(db,{id:'gone',userId:store.user.id});
+    let closingCalls=0;
+    const ordered={...db,rpc:async(name,args)=>{
+      if(name==='finish_image_job'){
+        closingCalls++;
+        assert.deepEqual(ledger().filter(r=>r.generationId==='gone').map(r=>r.state),['rejected'],'audit must be finalized before the job can become terminal');
+      }
+      return db.rpc(name,args);
+    }};
+    await runImageJob(ordered,{id:'gone',userId:store.user.id});await runImageJob(ordered,{id:'gone',userId:store.user.id});
+    assert.equal(closingCalls,1);
     assert.equal(store.job('gone').state,'failed');assert.equal(store.job('gone').dispatchedAt,undefined);
     assert.equal(store.get('generations','gone').status,'failed');assert.match(store.get('generations','gone').metadata.error,/reference is unavailable or was removed/);
     assert.deepEqual(ledger().filter(r=>r.generationId==='gone').map(r=>r.state),['rejected']);
