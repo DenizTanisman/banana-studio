@@ -1175,7 +1175,7 @@ const mergeVideoMetadata = (existing: Record<string, any>, incoming: Record<stri
 };
 
 // A retry after a failed row save reuses the stored file instead of moving the video again.
-const completedVideoTransfers = new Map<string, { source: string; storagePath: string; thumbnailPath: string | null }>();
+const completedVideoTransfers = new Map<string, { source: string; storagePath: string; thumbnailPath: string | null; pendingThumbnail?: Blob }>();
 
 export const saveVideo = async (
   media: GeneratedMedia,
@@ -1206,13 +1206,26 @@ export const saveVideo = async (
 
     const transferKey = `${userId}:${media.id}`;
     const previousTransfer = completedVideoTransfers.get(transferKey);
+    // Another source overwrites the same stored file, so its entry no longer describes it.
+    if (previousTransfer && previousTransfer.source !== videoUrl) completedVideoTransfers.delete(transferKey);
     const reusedUrl = previousTransfer?.source === videoUrl ? await createMediaAccessUrl(previousTransfer.storagePath) : undefined;
     if (previousTransfer && reusedUrl) {
       publicUrl = reusedUrl;
       uploadedStoragePath = previousTransfer.storagePath;
-      if (previousTransfer.thumbnailPath) {
-        const reusedThumbnailUrl = await createMediaAccessUrl(previousTransfer.thumbnailPath);
-        if (reusedThumbnailUrl) { thumbnailUrl = reusedThumbnailUrl; uploadedThumbnailPath = previousTransfer.thumbnailPath; }
+      await assertSameUser();
+      // The poster is optional: retry a failed poster upload, but never block the video row on it.
+      try {
+        if (!previousTransfer.thumbnailPath && previousTransfer.pendingThumbnail) {
+          const { error: thumbnailUploadError } = await supabase.storage.from(MEDIA_BUCKET_NAME)
+            .upload(thumbnailPath, previousTransfer.pendingThumbnail, { contentType: 'image/png', cacheControl: '0', upsert: true });
+          if (!thumbnailUploadError) { previousTransfer.thumbnailPath = thumbnailPath; delete previousTransfer.pendingThumbnail; }
+        }
+        if (previousTransfer.thumbnailPath) {
+          const reusedThumbnailUrl = await createMediaAccessUrl(previousTransfer.thumbnailPath);
+          if (reusedThumbnailUrl) { thumbnailUrl = reusedThumbnailUrl; uploadedThumbnailPath = previousTransfer.thumbnailPath; }
+        }
+      } catch (thumbnailError: any) {
+        console.warn('Saved video poster could not be renewed:', thumbnailError?.message || thumbnailError);
       }
     } else if (!videoUrl.startsWith('data:')) {
       try {
@@ -1279,7 +1292,7 @@ export const saveVideo = async (
         }
         publicUrl = storagePublicUrl;
         uploadedStoragePath = storagePath;
-        completedVideoTransfers.set(transferKey, { source: videoUrl, storagePath, thumbnailPath: null });
+        completedVideoTransfers.set(transferKey, { source: videoUrl, storagePath, thumbnailPath: null, ...(thumbnailBlob ? { pendingThumbnail: thumbnailBlob } : {}) });
 
         if (thumbnailBlob) {
           await assertSameUser();
