@@ -12,6 +12,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         if (args.Contains("--test-vault")) { try { KeyVault.Test(); return 0; } catch { return 1; } }
+        if (args.Contains("--test-window-placement")) { try { WindowPlacement.Test(); return 0; } catch { return 1; } }
         ApplicationConfiguration.Initialize();
         using var instance = new Mutex(true, "Local\\BananaStudio.Workspace", out var first);
         if (!first) { MessageBox.Show("Banana Studio is already running. Open its existing window.", "Banana Studio"); return 0; }
@@ -26,6 +27,9 @@ internal sealed class StudioWindow : Form
     private readonly WorkspaceProcess workspace = new();
     private Uri? origin;
     private string? profile;
+    private Rectangle normalWindowBounds;
+    private bool placementReady;
+    private bool fullscreenTransition;
     private readonly Label status = new() { Text = "Opening your local workspace…", ForeColor = Color.LightGray, BackColor = Color.FromArgb(13, 17, 23), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
 
     internal StudioWindow()
@@ -45,11 +49,45 @@ internal sealed class StudioWindow : Form
         view.DropDownItems.Add("Full Screen (F11)", null, (_, _) => ToggleFullScreen());
         menu.Items.Add(file); menu.Items.Add(view); MainMenuStrip = menu;
         Controls.Add(web); Controls.Add(status); Controls.Add(menu);
-        Shown += async (_, _) => await StartWorkspace();
+        Shown += async (_, _) =>
+        {
+            ApplyWindowBounds(WindowPlacement.Load(WorkspaceProcess.DataDirectory) ?? Bounds);
+            placementReady = true; CaptureNormalWindowBounds();
+            await StartWorkspace();
+        };
+        LocationChanged += (_, _) => CaptureNormalWindowBounds();
+        SizeChanged += (_, _) => CaptureNormalWindowBounds();
+        DpiChanged += (_, _) => { if (placementReady) BeginInvoke(KeepWindowReachable); };
+        FormClosing += (_, _) =>
+        {
+            CaptureNormalWindowBounds();
+            if (placementReady) WindowPlacement.Save(WorkspaceProcess.DataDirectory, normalWindowBounds);
+        };
         FormClosed += (_, _) => { workspace.Dispose(); web.Dispose(); if (profile != null) { try { Directory.Delete(profile, true); } catch (IOException) { } catch (UnauthorizedAccessException) { } } };
         workspace.Failed += () => { if (!IsDisposed && IsHandleCreated) BeginInvoke(() => ShowFailure("The local workspace stopped. Reopen Banana Studio. Your saved gallery is kept on this PC.")); };
     }
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+    private void CaptureNormalWindowBounds()
+    {
+        if (placementReady && !fullscreenTransition && FormBorderStyle != FormBorderStyle.None && WindowState == FormWindowState.Normal) normalWindowBounds = Bounds;
+    }
+    private void ApplyWindowBounds(Rectangle bounds)
+    {
+        var fitted = WindowPlacement.Constrain(bounds, Screen.AllScreens.OrderByDescending(screen => screen.Primary).Select(screen => screen.WorkingArea).ToArray(), new Size(760, 560));
+        MinimumSize = new Size(Math.Min(760, fitted.Width), Math.Min(560, fitted.Height));
+        Bounds = fitted;
+    }
+    private void KeepWindowReachable()
+    {
+        if (IsDisposed || !placementReady || FormBorderStyle == FormBorderStyle.None || WindowState != FormWindowState.Normal) return;
+        ApplyWindowBounds(Bounds); CaptureNormalWindowBounds();
+    }
+    protected override void WndProc(ref Message message)
+    {
+        base.WndProc(ref message);
+        // WM_DISPLAYCHANGE also covers a disconnected external monitor.
+        if (message.Msg == 0x007E && placementReady && IsHandleCreated && !IsDisposed) BeginInvoke(KeepWindowReachable);
+    }
     private sealed class DarkMenuColors : ProfessionalColorTable
     {
         private static Color Background => Color.FromArgb(22, 27, 34);
@@ -127,8 +165,13 @@ internal sealed class StudioWindow : Form
     private Rectangle previousBounds;
     private void ToggleFullScreen()
     {
-        if (FormBorderStyle != FormBorderStyle.None) { previousBorder = FormBorderStyle; previousState = WindowState; previousBounds = Bounds; WindowState = FormWindowState.Normal; FormBorderStyle = FormBorderStyle.None; MainMenuStrip!.Visible = false; Bounds = Screen.FromControl(this).Bounds; }
-        else { FormBorderStyle = previousBorder; Bounds = previousBounds; WindowState = previousState; MainMenuStrip!.Visible = true; }
+        CaptureNormalWindowBounds(); fullscreenTransition = true;
+        try
+        {
+            if (FormBorderStyle != FormBorderStyle.None) { previousBorder = FormBorderStyle; previousState = WindowState; previousBounds = Bounds; WindowState = FormWindowState.Normal; FormBorderStyle = FormBorderStyle.None; MainMenuStrip!.Visible = false; Bounds = Screen.FromControl(this).Bounds; }
+            else { FormBorderStyle = previousBorder; Bounds = previousBounds; WindowState = previousState; MainMenuStrip!.Visible = true; }
+        }
+        finally { fullscreenTransition = false; CaptureNormalWindowBounds(); }
     }
     private bool keysOpen;
     private async Task ShowKeys()

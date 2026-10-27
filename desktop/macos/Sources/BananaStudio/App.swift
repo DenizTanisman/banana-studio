@@ -3,13 +3,16 @@ import WebKit
 import Sparkle
 
 @main
-final class BananaStudioApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, WKDownloadDelegate {
+final class BananaStudioApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, WKDownloadDelegate {
     private let workspace = WorkspaceProcess()
     private var window: NSWindow!
     private var webView: WKWebView!
     private var updater: SPUStandardUpdaterController?
     private var origin: URL?
     private var launchMessage: NSTextField!
+    private let placement = WindowPlacementStore(url: WorkspaceProcess.dataDirectory.appendingPathComponent("window-placement.json"))
+    private var normalWindowFrame: NSRect?
+    private var fullscreenTransition = false
 
     static func main() {
         if CommandLine.arguments.contains("--raster-codec") { exit(RasterCodec.run()) }
@@ -24,7 +27,9 @@ final class BananaStudioApp: NSObject, NSApplicationDelegate, WKNavigationDelega
         webView = WKWebView(frame: .zero, configuration: config); webView.navigationDelegate = self; webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1400, height: 900), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = "Banana Studio"; window.minSize = NSSize(width: 760, height: 560); window.contentView = webView; window.center()
+        window.title = "Banana Studio"; window.contentView = webView; window.center()
+        fitWindow(placement.load() ?? window.frame)
+        normalWindowFrame = window.frame; window.delegate = self
         launchMessage = NSTextField(labelWithString: "Opening your local workspace…")
         launchMessage.textColor = .secondaryLabelColor; launchMessage.translatesAutoresizingMaskIntoConstraints = false; webView.addSubview(launchMessage)
         NSLayoutConstraint.activate([launchMessage.centerXAnchor.constraint(equalTo: webView.centerXAnchor), launchMessage.centerYAnchor.constraint(equalTo: webView.centerYAnchor)])
@@ -35,7 +40,7 @@ final class BananaStudioApp: NSObject, NSApplicationDelegate, WKNavigationDelega
             self.webView.load(request); self.launchMessage.isHidden = true
         }
         workspace.failed = { [weak self] in self?.showFailure() }
-        do { try workspace.start() } catch { showFailure() }
+        do { try workspace.start() } catch { workspace.stop(); showFailure() }
         if Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String != nil, Bundle.main.object(forInfoDictionaryKey: "BananaDevelopmentBuild") as? Bool != true {
             updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
         }
@@ -90,7 +95,30 @@ final class BananaStudioApp: NSObject, NSApplicationDelegate, WKNavigationDelega
     }
     func showFailure() { launchMessage.isHidden = false; launchMessage.stringValue = "The local workspace could not start. Reopen Banana Studio. Your data is kept on this Mac." }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
-    func applicationWillTerminate(_ notification: Notification) { workspace.stop() }
+    func applicationWillTerminate(_ notification: Notification) { saveWindowPlacement(); workspace.stop() }
+    private func fitWindow(_ frame: NSRect) {
+        let fitted = WindowPlacement.constrain(frame, to: NSScreen.screens.map(\.visibleFrame))
+        window.minSize = NSSize(width: min(760, fitted.width), height: min(560, fitted.height))
+        window.setFrame(fitted, display: false)
+    }
+    private func captureNormalWindowFrame() {
+        guard !fullscreenTransition, !window.isMiniaturized, !window.isZoomed, !window.styleMask.contains(.fullScreen) else { return }
+        normalWindowFrame = window.frame
+    }
+    private func saveWindowPlacement() {
+        captureNormalWindowFrame()
+        if let normalWindowFrame { placement.save(normalWindowFrame) }
+    }
+    func windowDidMove(_ notification: Notification) { captureNormalWindowFrame() }
+    func windowDidResize(_ notification: Notification) { captureNormalWindowFrame() }
+    func windowWillClose(_ notification: Notification) { saveWindowPlacement() }
+    func windowWillEnterFullScreen(_ notification: Notification) { captureNormalWindowFrame(); fullscreenTransition = true }
+    func windowDidFailToEnterFullScreen(_ window: NSWindow) { fullscreenTransition = false; captureNormalWindowFrame() }
+    func windowDidExitFullScreen(_ notification: Notification) { fullscreenTransition = false; captureNormalWindowFrame() }
+    func applicationDidChangeScreenParameters(_ notification: Notification) {
+        guard window != nil, !window.isMiniaturized, !window.isZoomed, !fullscreenTransition, !window.styleMask.contains(.fullScreen) else { return }
+        fitWindow(normalWindowFrame ?? window.frame); captureNormalWindowFrame()
+    }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.frameInfo.isMainFrame, let origin,
               message.frameInfo.securityOrigin.host == origin.host,

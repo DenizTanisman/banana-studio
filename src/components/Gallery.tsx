@@ -17,7 +17,8 @@ import { useSavedImageEditSource } from './useSavedImageEditSource';
 import { ImageEditDetails, PromptPreparationDetails } from './GenerationDetails';
 import { getRecordedEditSourceReference, getRecordedGenerationTime } from './recordedGenerationDetails';
 import { useGalleryMediaDetails } from './useGalleryMediaDetails';
-import { useGalleryImageSource } from './useGalleryImageSource';
+import { DetailImage } from './GalleryDetailImage';
+import { buildGalleryFolderStats } from './galleryFolderStats';
 import type { GallerySearchEntry } from './gallerySearch';
 import { getComparisonSelection, isComparableImage } from './imageComparison';
 import { YouTubePreviewDialog } from './YouTubePreviewDialog';
@@ -682,132 +683,6 @@ const CustomVideoPlayer: React.FC<{
   );
 };
 
-const DetailImage: React.FC<{
-  src: string;
-  fallbackSrc?: string;
-  alt: string;
-  className?: string;
-  onClick?: React.MouseEventHandler<HTMLImageElement>;
-}> = ({ src, fallbackSrc, alt, className, onClick }) => {
-  const imageSource = useGalleryImageSource(src, fallbackSrc);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const viewportRef = useRef({ zoom: 1, x: 0, y: 0 });
-  const [viewport, setViewport] = useState(viewportRef.current);
-  const dragRef = useRef<{ pointerId: number; x: number; y: number; panX: number; panY: number } | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
-  useEffect(() => {
-    // Cached/data images can finish before the loading effect runs. Also
-    // settle them on retry when the URL itself has not changed.
-    if (imageRef.current?.complete && imageRef.current.naturalWidth) imageSource.onLoad();
-  }, [imageSource.url, imageSource.key]);
-
-  const updateViewport = useCallback((next: typeof viewportRef.current) => {
-    const stage = stageRef.current;
-    const image = imageRef.current;
-    const zoom = Math.max(1, Math.min(8, next.zoom));
-    const maxX = stage && image ? Math.max(0, (image.offsetWidth * zoom - stage.clientWidth) / 2) : 0;
-    const maxY = stage && image ? Math.max(0, (image.offsetHeight * zoom - stage.clientHeight) / 2) : 0;
-    const value = { zoom, x: Math.max(-maxX, Math.min(maxX, next.x)), y: Math.max(-maxY, Math.min(maxY, next.y)) };
-    viewportRef.current = value;
-    setViewport(value);
-  }, []);
-
-  const zoomAt = useCallback((factor: number, clientX?: number, clientY?: number) => {
-    const stage = stageRef.current;
-    const image = imageRef.current;
-    if (!stage || !image?.naturalWidth) return;
-    const current = viewportRef.current;
-    const zoom = Math.max(1, Math.min(8, current.zoom * factor));
-    const rect = stage.getBoundingClientRect();
-    const x = clientX === undefined ? 0 : clientX - rect.left - rect.width / 2;
-    const y = clientY === undefined ? 0 : clientY - rect.top - rect.height / 2;
-    const ratio = zoom / current.zoom;
-    updateViewport({ zoom, x: x - (x - current.x) * ratio, y: y - (y - current.y) * ratio });
-  }, [updateViewport]);
-
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const wheel = (event: WheelEvent) => {
-      if ((event.target as HTMLElement).closest('button') || !event.deltaY || !imageRef.current?.naturalWidth) return;
-      // React's wheel listener is passive; a local non-passive listener keeps
-      // zoom from scrolling the modal or triggering browser zoom.
-      event.preventDefault();
-      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? stage.clientHeight : 1);
-      zoomAt(Math.exp(-Math.max(-120, Math.min(120, delta)) * 0.0025), event.clientX, event.clientY);
-    };
-    stage.addEventListener('wheel', wheel, { passive: false });
-    const resize = new ResizeObserver(() => updateViewport(viewportRef.current));
-    resize.observe(stage);
-    return () => { stage.removeEventListener('wheel', wheel); resize.disconnect(); };
-  }, [zoomAt, updateViewport]);
-
-  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (dragRef.current?.pointerId !== event.pointerId) return;
-    dragRef.current = null;
-    setIsDragging(false);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  };
-
-  return (
-    <div
-      ref={stageRef}
-      className={`relative flex w-full min-w-0 min-h-0 shrink-0 md:shrink md:h-full md:max-h-full items-center justify-center overflow-hidden ${imageSource.loading || imageSource.failed ? 'min-h-[200px]' : ''}`}
-      data-gallery-image-zoom={viewport.zoom}
-      style={{ cursor: viewport.zoom > 1 ? isDragging ? 'grabbing' : 'grab' : undefined }}
-      onClick={event => { if (viewport.zoom > 1) event.stopPropagation(); }}
-      onDoubleClick={event => { event.stopPropagation(); updateViewport({ zoom: 1, x: 0, y: 0 }); }}
-      onPointerDown={event => {
-        if (event.pointerType !== 'mouse' || event.button !== 0 || viewportRef.current.zoom <= 1 || (event.target as HTMLElement).closest('button')) return;
-        event.preventDefault();
-        event.stopPropagation();
-        dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, panX: viewportRef.current.x, panY: viewportRef.current.y };
-        event.currentTarget.setPointerCapture(event.pointerId);
-        setIsDragging(true);
-      }}
-      onPointerMove={event => {
-        const drag = dragRef.current;
-        if (!drag || drag.pointerId !== event.pointerId) return;
-        updateViewport({ zoom: viewportRef.current.zoom, x: drag.panX + event.clientX - drag.x, y: drag.panY + event.clientY - drag.y });
-      }}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      onLostPointerCapture={() => { dragRef.current = null; setIsDragging(false); }}
-    >
-    {imageSource.url && <img
-      ref={imageRef}
-      src={imageSource.url}
-      alt={alt}
-      className={className}
-      style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`, userSelect: 'none' }}
-      title="Scroll to zoom · Drag to pan · Double-click to fit"
-      onClick={onClick}
-      onLoad={() => { imageSource.onLoad(); updateViewport(viewportRef.current); }}
-      onError={imageSource.onError}
-      loading="eager"
-      fetchPriority="high"
-      decoding="async"
-      draggable={false}
-    />}
-    {imageSource.loading && <div role="status" className="absolute inset-0 flex items-center justify-center gap-2 bg-black/30 text-sm text-white">
-      <Loader2 className="h-5 w-5 animate-spin" /> Loading image…
-    </div>}
-    {imageSource.failed && <div className="absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-center gap-3 rounded-lg bg-gray-900/95 p-3 text-sm text-gray-300">
-      <span role="alert">{imageSource.preview ? 'Showing preview. Full image could not be loaded.' : 'Image could not be loaded.'}</span>
-      <button type="button" className="rounded-lg bg-violet-600 px-3 py-2 text-white hover:bg-violet-500" onClick={event => { event.stopPropagation(); imageSource.retry(); }}>Retry loading image</button>
-    </div>}
-    {viewport.zoom > 1 && <button
-      type="button"
-      aria-label="Reset image zoom"
-      title="Reset image zoom"
-      className="absolute bottom-3 left-3 rounded-full border border-white/15 bg-black/70 px-3 py-1.5 text-xs text-white hover:bg-black/90"
-      onClick={event => { event.stopPropagation(); updateViewport({ zoom: 1, x: 0, y: 0 }); }}
-    >{Math.round(viewport.zoom * 100)}% · Fit</button>}
-    </div>
-  );
-};
 
 const RecoverImageButton = ({ media, onRecover }: { media: GeneratedMedia; onRecover?: (image: GeneratedMedia) => Promise<void> }) => {
   const [checking, setChecking] = useState(false);
@@ -1077,6 +952,18 @@ export const Gallery: React.FC<GalleryProps> = ({
   // --- Derived State ---
   const currentFolder = folders.find(f => f.id === currentFolderId);
 
+  // One index serves every folder badge and descendant cost total.
+  const folderStats = useMemo(() => {
+    const costPerMedia = (m: GeneratedMedia): number => {
+      if (m.generationCost && typeof m.generationCost.usd === 'number') return m.generationCost.usd;
+      if (m.mediaType === 'video') return 0; // unknown video cost, don't guess
+      const model = m.imageModel || DEFAULT_IMAGE_MODEL;
+      return estimateImageCost(model, m.resolution, 1, m.aspectRatio, (m.referenceImages?.length || 0) > 0) ?? 0;
+    };
+
+    return buildGalleryFolderStats(folders, images, costPerMedia);
+  }, [folders, images]);
+
   // Filter folders
   const visibleFolders = useMemo(() => folders.filter(f => {
     if (showFavoritesOnly) return false; // Don't show folders in Favorites view
@@ -1086,43 +973,6 @@ export const Gallery: React.FC<GalleryProps> = ({
 
   const folderPreviews = useMemo(() => buildFolderPreviewIndex(folders, images), [folders, images]);
 
-  // Recursively compute total cost (USD) for each folder, summing direct images + descendant folders
-  const folderCosts = useMemo(() => {
-    const childFoldersByParent = new Map<string, Folder[]>();
-    folders.forEach(f => {
-      if (!f.parentId) return;
-      const list = childFoldersByParent.get(f.parentId) || [];
-      list.push(f);
-      childFoldersByParent.set(f.parentId, list);
-    });
-
-    const imagesByFolder = new Map<string, GeneratedMedia[]>();
-    images.forEach(img => {
-      if (!img.folderId) return;
-      const list = imagesByFolder.get(img.folderId) || [];
-      list.push(img);
-      imagesByFolder.set(img.folderId, list);
-    });
-
-    const costPerMedia = (m: GeneratedMedia): number => {
-      if (m.generationCost && typeof m.generationCost.usd === 'number') return m.generationCost.usd;
-      if (m.mediaType === 'video') return 0; // unknown video cost, don't guess
-      const model = m.imageModel || DEFAULT_IMAGE_MODEL;
-      return estimateImageCost(model, m.resolution, 1, m.aspectRatio, (m.referenceImages?.length || 0) > 0) ?? 0;
-    };
-
-    const cache = new Map<string, number>();
-    const compute = (folderId: string): number => {
-      if (cache.has(folderId)) return cache.get(folderId)!;
-      let total = 0;
-      (imagesByFolder.get(folderId) || []).forEach(img => { total += costPerMedia(img); });
-      (childFoldersByParent.get(folderId) || []).forEach(child => { total += compute(child.id); });
-      cache.set(folderId, total);
-      return total;
-    };
-    folders.forEach(f => compute(f.id));
-    return cache;
-  }, [folders, images]);
 
   const allVisibleImages = useMemo(() => groupBrainstormImages(images.filter(img => {
     if (mediaFilter !== 'all') {
@@ -2733,9 +2583,8 @@ export const Gallery: React.FC<GalleryProps> = ({
               : 0;
             const folderAspectRatio = 16 / 9;
             const folderWidth = targetRowHeight * folderAspectRatio;
-            const folderMedia = images.filter(item => item.folderId === folder.id);
-            const childFolderCount = folders.filter(child => child.parentId === folder.id).length;
-            const folderItemCount = folderMedia.length + childFolderCount;
+            const childFolderCount = folderStats.get(folder.id)?.directChildFolderCount || 0;
+            const folderItemCount = folderStats.get(folder.id)?.itemCount || 0;
             return (
               <div
                 key={folder.id}
@@ -2782,8 +2631,8 @@ export const Gallery: React.FC<GalleryProps> = ({
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-medium">
                           <span className="rounded-full border border-white/[0.07] bg-black/20 px-2 py-0.5 text-gray-500">{folderItemCount} item{folderItemCount === 1 ? '' : 's'}</span>
                           {childFolderCount > 0 && <span className="rounded-full border border-white/[0.07] bg-black/20 px-2 py-0.5 text-gray-500">{childFolderCount} folder{childFolderCount === 1 ? '' : 's'}</span>}
-                          {(folderCosts.get(folder.id) || 0) > 0 && (
-                            <span className="rounded-full border border-emerald-400/15 bg-emerald-500/[0.08] px-2 py-0.5 text-emerald-400/90">~${(folderCosts.get(folder.id) || 0).toFixed(2)}</span>
+                          {(folderStats.get(folder.id)?.totalCost || 0) > 0 && (
+                            <span className="rounded-full border border-emerald-400/15 bg-emerald-500/[0.08] px-2 py-0.5 text-emerald-400/90">~${(folderStats.get(folder.id)?.totalCost || 0).toFixed(2)}</span>
                           )}
                         </div>
                       </div>

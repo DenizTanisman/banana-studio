@@ -8,6 +8,7 @@ final class WorkspaceProcess {
     private var buffer = Data()
     private var started = false
     private var shuttingDown = false
+    private var startup: WorkspaceStartup?
     private(set) var origin: URL?
     private(set) var bootstrap = ""
     var ready: ((URL, String) -> Void)?
@@ -36,17 +37,19 @@ final class WorkspaceProcess {
             let data = handle.availableData
             DispatchQueue.main.async { self?.receive(data) }
         }
-        task.terminationHandler = { [weak self] _ in DispatchQueue.main.async { guard let self, !self.shuttingDown else { return }; self.failed?() } }
+        task.terminationHandler = { [weak self] _ in DispatchQueue.main.async { self?.failOnce() } }
         process = task; input = stdin; output = stdout
         try task.run()
+        startup = WorkspaceStartup { [weak self] in self?.finishFailure() }
         try send(["dataDirectory": Self.dataDirectory.path, "webRoot": resources.appendingPathComponent("workspace/web").path, "bootstrap": bootstrap, "keys": try KeyVault.all()])
     }
     private func receive(_ data: Data) {
         guard !data.isEmpty else { return }; buffer.append(data)
-        guard buffer.count < 256_000 else { buffer.removeAll(); return }
+        guard buffer.count < 256_000 else { failOnce(); return }
         while let range = buffer.range(of: Data([10])) {
             let line = buffer.subdata(in: 0..<range.lowerBound); buffer.removeSubrange(0..<range.upperBound)
             guard !started, let value = try? JSONSerialization.jsonObject(with: line) as? [String: Any], value["event"] as? String == "ready", let raw = value["origin"] as? String, let url = URL(string: raw), url.scheme == "http", url.host == "127.0.0.1", url.port != nil else { continue }
+            guard startup?.ready() == true else { continue }
             started = true; origin = url; ready?(url, bootstrap)
         }
     }
@@ -56,8 +59,21 @@ final class WorkspaceProcess {
         try handle.write(contentsOf: data)
     }
     func refreshKeys() throws { try send(["action": "keys", "keys": try KeyVault.all()]) }
+    private func failOnce() {
+        guard !shuttingDown, startup?.fail() == true else { return }
+        finishFailure()
+    }
+    private func finishFailure() {
+        guard !shuttingDown else { return }
+        output?.fileHandleForReading.readabilityHandler = nil
+        buffer.removeAll()
+        try? input?.fileHandleForWriting.close()
+        if process?.isRunning == true { process?.terminate() }
+        failed?()
+    }
     func stop() {
-        shuttingDown = true; output?.fileHandleForReading.readabilityHandler = nil
+        shuttingDown = true; startup?.stop(); startup = nil
+        output?.fileHandleForReading.readabilityHandler = nil
         try? send(["action": "shutdown"]); try? input?.fileHandleForWriting.close()
         if process?.isRunning == true { process?.terminate() }
     }

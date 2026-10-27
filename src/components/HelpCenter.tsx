@@ -223,6 +223,7 @@ export const HelpCenter: React.FC<HelpCenterProps> = ({ open, onClose }) => {
                 </div>
                 <div className="mt-5 rounded-2xl border border-white/[0.08] bg-[#111720] p-5">
                   <h3 className="text-sm font-semibold text-white">Gallery’de sonuçtan sonra</h3>
+                  <p className="mt-2 text-xs leading-5 text-gray-400">Görsel açıkken <CodeTag>+</CodeTag> / <CodeTag>−</CodeTag> ile yakınlaştırıp uzaklaştır, <CodeTag>0</CodeTag> ile tamamını ekrana sığdır. Sol/sağ oklar diğer görsellere geçer; <CodeTag>Shift+B</CodeTag> detay panelini gizler. Yakınlaştırma, görselin dosyasını değiştirmez.</p>
                   <p className="mt-2 text-xs leading-5 text-gray-500">Mobilde açık görselde sağa/sola kaydırarak gezinebilirsin. Toplu Fotoğraflar kaydı için görselleri seç, Prepare photos ve ardından Save to Photos’a dokun; iPhone paylaşım ekranında Görselleri Kaydet’i seç. Tek seferde en fazla 20 görsel hazırlanır.</p>
                   <div className="mt-4 grid gap-4 sm:grid-cols-3">
                     <div><span className="text-xs font-semibold text-violet-300">Reference</span><p className="mt-1 text-xs leading-5 text-gray-500">Seçili çıktıyı yeni üretimde referans olarak kullanır.</p></div>
