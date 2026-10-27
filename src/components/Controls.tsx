@@ -723,7 +723,11 @@ export const Controls: React.FC<ControlsProps> = ({
       }
 
       if (newImages.length > 0) {
-        onChange({ ...config, referenceImages: [...currentImages, ...newImages] });
+        // Merge into the latest draft; edits made while files were read must survive.
+        onChange(previous => {
+          const images = previous.referenceImages || [];
+          return { ...previous, referenceImages: [...images, ...newImages.slice(0, Math.max(0, MAX_IMAGES - images.length))] };
+        });
       }
   };
 
@@ -789,18 +793,11 @@ export const Controls: React.FC<ControlsProps> = ({
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
-  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    setAttachmentError(null);
-    if (isH3VideoConfig && maxReferenceAudios === 0) {
-      setAttachmentError('Choose an H3 Max action that accepts audio before adding an audio clip.');
-      if (audioInputRef.current) audioInputRef.current.value = '';
-      return;
-    }
+  const processAudioFiles = async (files: File[], switchToVideo = false) => {
     const MAX_AUDIOS = maxReferenceAudios;
-    const current = config.referenceAudios?.length || 0;
-    const files = (Array.from(e.target.files) as File[]).slice(0, MAX_AUDIOS - current);
-    const newRefs = await Promise.all(files.map(async file => {
+    const toAdd = files.slice(0, Math.max(0, MAX_AUDIOS - (config.referenceAudios?.length || 0)));
+    if (toAdd.length === 0) return;
+    const newRefs = await Promise.all(toAdd.map(async file => {
       const url = URL.createObjectURL(file);
       return {
         id: Math.random().toString(36).substr(2, 9),
@@ -811,12 +808,26 @@ export const Controls: React.FC<ControlsProps> = ({
         duration: await readAudioDuration(url),
       };
     }));
-    if (newRefs.length > 0) {
-      onChange({
-        ...config,
-        referenceAudios: [...(config.referenceAudios || []), ...newRefs],
-      });
+    // Reading durations can take seconds; merge into the latest draft.
+    onChange(previous => {
+      const audios = previous.referenceAudios || [];
+      return {
+        ...previous,
+        referenceAudios: [...audios, ...newRefs.slice(0, Math.max(0, MAX_AUDIOS - audios.length))],
+        ...(switchToVideo ? { mode: 'video' as const } : {}),
+      };
+    });
+  };
+
+  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    setAttachmentError(null);
+    if (isH3VideoConfig && maxReferenceAudios === 0) {
+      setAttachmentError('Choose an H3 Max action that accepts audio before adding an audio clip.');
+      if (audioInputRef.current) audioInputRef.current.value = '';
+      return;
     }
+    await processAudioFiles(Array.from(e.target.files) as File[]);
     if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
@@ -1380,27 +1391,7 @@ export const Controls: React.FC<ControlsProps> = ({
             if (isH3VideoConfig && maxReferenceAudios === 0) {
                 setAttachmentError('Choose an H3 Max action that accepts audio before adding an audio clip.');
             } else {
-                const MAX_AUDIOS = maxReferenceAudios;
-                const current = config.referenceAudios?.length || 0;
-                const toAdd = audioFiles.slice(0, MAX_AUDIOS - current);
-                if (toAdd.length > 0) {
-                    const newRefs = await Promise.all(toAdd.map(async f => {
-                        const url = URL.createObjectURL(f);
-                        return {
-                          id: Math.random().toString(36).substr(2, 9),
-                          url,
-                          mimeType: getMimeType(f, f.name),
-                          name: f.name,
-                          size: f.size,
-                          duration: await readAudioDuration(url),
-                        };
-                    }));
-                    onChange({
-                        ...config,
-                        referenceAudios: [...(config.referenceAudios || []), ...newRefs],
-                        mode: 'video',
-                    });
-                }
+                await processAudioFiles(audioFiles, true);
             }
         }
         return;
