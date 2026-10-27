@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, createUserScopedClient, requireUser } from './_lib/auth.js';
-import { SUNBURST_MODEL } from '../src/lib/images/openaiImage.js';
 import { readStoredImage, signedMediaUrl } from './_lib/imageStorage.js';
 
 export const config = { maxDuration: 60 };
+// Every model executeOpenAIImage saves under openai/<user>/<id>; routed Nano Banana included.
+const RECOVERABLE_MODELS = new Set(['gpt-image-2.5-sunburst', 'gemini-3-pro-image-preview', 'gemini-nano-banana-2.1']);
 
 /** Recover an existing object only. This endpoint never calls an image provider. */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -21,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { data: row, error } = await db.from('generations').select('id, image_model, status, metadata')
     .eq('id', body.id).eq('user_id', user.id).maybeSingle();
   if (error) return res.status(503).json({ error: 'Could not check the saved generation. Try recovery again shortly.' });
-  if (!row || row.image_model !== SUNBURST_MODEL) return res.status(404).json({ error: 'Sunburst generation not found.' });
+  if (!row || !RECOVERABLE_MODELS.has(row.image_model)) return res.status(404).json({ error: 'Saved image generation not found.' });
   // Do not race a live worker or overwrite a still-changing metadata object.
   const startedAt = Number(row.metadata?.openaiStartedAt);
   if (row.status === 'processing' && (!startedAt || Date.now() - startedAt < 330_000)) {
