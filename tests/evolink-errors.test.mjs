@@ -49,6 +49,14 @@ test('task diagnostics precede root messages and validation arrays expose msg',(
   assert.equal(getEvoLinkErrorMessage({detail:[{loc:['body','prompt'],msg:'Field required',type:'missing'}]}),'Field required');
 });
 
+test('nested codes and generic task messages never hide descriptive errors',()=>{
+  assert.equal(getEvoLinkErrorMessage({message:'Field required',detail:{error:{code:'E_INVALID'},msg:'Field required'}}),'Field required');
+  assert.equal(getEvoLinkErrorMessage({detail:'Task failed',task_info:{failure_reason:'GPU timeout'}}),'GPU timeout');
+  assert.equal(getEvoLinkErrorMessage({detail:'Reference video is invalid',task_info:{failure_reason:'Task failed'}}),'Reference video is invalid');
+  assert.equal(getEvoLinkErrorMessage({detail:{error:{code:'E_INVALID'}}}),'E_INVALID');
+  assert.equal(getEvoLinkErrorMessage({task_info:{code:'E_TASK'}}),'E_TASK');
+});
+
 test('describeEvoLinkFailure formats context, detail, and taskId accurately', () => {
   const result = describeEvoLinkFailure(
     { detail: 'Yüz tespit edilemedi' },
