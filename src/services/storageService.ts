@@ -1287,7 +1287,9 @@ export const saveVideo = async (
           }
         }
       } catch (fetchErr: any) {
+        // Never persist the expiring provider URL; the caller retries the copy.
         console.warn("Failed to fetch video for storage upload:", fetchErr.message);
+        return undefined;
       }
     }
 
