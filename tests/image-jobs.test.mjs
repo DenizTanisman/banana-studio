@@ -38,3 +38,25 @@ test('a queued image whose reference was removed fails once without dispatch; te
     assert.equal(store.job('busy').state,'preparing');assert.equal(store.get('generations','busy').status,'pending');
   }finally{store.close();fs.rmSync(directory,{recursive:true,force:true});if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;if(oldEnv!==undefined)process.env.VERCEL_ENV=oldEnv;}
 });
+
+test('a queued image rejected before dispatch finalizes its audit before the job closes',async()=>{
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'banana-jobs-')),store=new LocalWorkspace(directory),oldUrl=process.env.SUPABASE_URL,oldEnv=process.env.VERCEL_ENV,oldKey=process.env.OPENAI_API_KEY;
+  const warn=console.warn;console.warn=()=>{};
+  try{
+    store.origin='http://127.0.0.1:12345';process.env.SUPABASE_URL=store.origin;delete process.env.VERCEL_ENV;process.env.OPENAI_API_KEY='synthetic';
+    const db=store.client(true),ledger=id=>store.db.prepare('SELECT payload FROM ledger').all().map(r=>JSON.parse(r.payload)).filter(r=>r.generationId===id).map(r=>r.state);
+    const enqueue=id=>store.workerRpc('enqueue_image_job',{p_id:id,p_metadata:{},p_payload:{id,model:'gpt-image-2.5-sunburst',provider:'openai',prompt:'p',displayPrompt:'p',aspectRatio:'2:1',resolution:'1K',options:{},referenceImages:[],privateReferencePaths:[],folderId:null}});
+    enqueue('invalid');
+    const ordered={...db,rpc:async(name,args)=>{
+      if(name==='finish_image_job')assert.deepEqual(ledger('invalid'),['rejected'],'audit must be finalized before the job can become terminal');
+      return db.rpc(name,args);
+    }};
+    await runImageJob(ordered,{id:'invalid',userId:store.user.id});
+    assert.equal(store.job('invalid').state,'failed');
+    // An interrupted audit write leaves the job redeliverable instead of terminal.
+    enqueue('interrupted');let fail=true;
+    const flaky={...db,rpc:async(name,args)=>{if(name==='finish_openai_request'&&fail){fail=false;return{data:null,error:{message:'connection reset'}};}return db.rpc(name,args);}};
+    await runImageJob(flaky,{id:'interrupted',userId:store.user.id}).catch(()=>{});
+    assert.notEqual(store.job('interrupted').state,'failed');
+  }finally{console.warn=warn;store.close();fs.rmSync(directory,{recursive:true,force:true});if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;if(oldEnv!==undefined)process.env.VERCEL_ENV=oldEnv;if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;}
+});
