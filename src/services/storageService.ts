@@ -1221,8 +1221,10 @@ export const saveVideo = async (
           if (!thumbnailUploadError) { previousTransfer.thumbnailPath = thumbnailPath; delete previousTransfer.pendingThumbnail; }
         }
         if (previousTransfer.thumbnailPath) {
+          // The row stores the durable path; a fresh signed URL is only for this session.
+          uploadedThumbnailPath = previousTransfer.thumbnailPath;
           const reusedThumbnailUrl = await createMediaAccessUrl(previousTransfer.thumbnailPath);
-          if (reusedThumbnailUrl) { thumbnailUrl = reusedThumbnailUrl; uploadedThumbnailPath = previousTransfer.thumbnailPath; }
+          if (reusedThumbnailUrl) thumbnailUrl = reusedThumbnailUrl;
         }
       } catch (thumbnailError: any) {
         console.warn('Saved video poster could not be renewed:', thumbnailError?.message || thumbnailError);
