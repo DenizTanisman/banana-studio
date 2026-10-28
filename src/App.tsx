@@ -1567,15 +1567,15 @@ const AuthorizedWorkspace: React.FC<{
   const handleUseAsReference = async (media: GeneratedMedia) => {
     try {
       if (media.mediaType === 'video') {
-        let limit = 0;
+        let limit: number | null = null;
         flushSync(() => setConfig(prev => {
           const MAX_VIDEOS = prev.videoModel === 'minimax-h3'
             ? prev.h3MaxMode&&prev.h3MaxMode!=='auto'?H3_MAX_CAPABILITIES[getH3MaxMode(prev)].videos.max:3
             : prev.videoModel === 'seedance-2.5'
             ? (prev.videoOperation === 'edit' || prev.videoOperation === 'extend' ? 1 : 10)
             : 3;
-          limit = (prev.referenceVideos?.length || 0) >= MAX_VIDEOS ? MAX_VIDEOS : 0;
-          if (limit) return prev;
+          // A zero limit (e.g. Text to Video Max) is full too.
+          if ((prev.referenceVideos?.length || 0) >= MAX_VIDEOS) { limit = MAX_VIDEOS; return prev; }
           return {
             ...prev,
             referenceVideos: [
@@ -1591,7 +1591,7 @@ const AuthorizedWorkspace: React.FC<{
             mode: 'video',
           };
         }));
-        if (limit) toast.warning('Limit Reached', `Maximum of ${limit} reference videos allowed for this operation.`);
+        if (limit !== null) toast.warning('Limit Reached', `Maximum of ${limit} reference videos allowed for this operation.`);
         else toast.success('Video Reference Added', 'Video added as reference. Switched to video mode.');
         return;
       }
@@ -1603,13 +1603,12 @@ const AuthorizedWorkspace: React.FC<{
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
           const base64Data = reader.result;
-          let limit = 0;
+          let limit: number | null = null;
 
           flushSync(() => setConfig(prev => {
             const isH3Video = prev.mode === 'video' && prev.videoModel === 'minimax-h3';
             const MAX_IMAGES = isH3Video ? (prev.h3MaxMode&&prev.h3MaxMode!=='auto'?H3_MAX_CAPABILITIES[getH3MaxMode(prev)].images.max+(getH3MaxMode(prev)==='reference_to_video'?new Set([prev.h3MaxOptions?.startImageId,prev.h3MaxOptions?.middleImageId,prev.h3MaxOptions?.endImageId].filter(id=>id&&prev.referenceImages.some(ref=>ref.id===id))).size:0):9) : prev.mode === 'image' && prev.imageModel === SUNBURST_MODEL ? 16 : 14;
-            limit = (prev.referenceImages?.length || 0) >= MAX_IMAGES ? MAX_IMAGES : 0;
-            if (limit) return prev;
+            if ((prev.referenceImages?.length || 0) >= MAX_IMAGES) { limit = MAX_IMAGES; return prev; }
 
             return {
               ...prev,
@@ -1623,7 +1622,7 @@ const AuthorizedWorkspace: React.FC<{
               ]
             };
           }));
-          if (limit) toast.warning('Limit Reached', `Maximum of ${limit} reference images allowed for this action.`);
+          if (limit !== null) toast.warning('Limit Reached', `Maximum of ${limit} reference images allowed for this action.`);
           else toast.success('Reference Added', 'Image added as reference.');
         }
       };
