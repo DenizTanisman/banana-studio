@@ -761,9 +761,10 @@ export const Controls: React.FC<ControlsProps> = ({
       );
 
       if (newRefs.length > 0) {
+        // Never exceed the limit, even if another selection finished first.
         onChange(previous => ({
           ...previous,
-          referenceVideos: [...(previous.referenceVideos || []), ...newRefs],
+          referenceVideos: [...(previous.referenceVideos || []), ...newRefs.slice(0, Math.max(0, maxReferenceVideos - (previous.referenceVideos?.length || 0)))],
           ...(switchToVideo ? { mode: 'video' as const } : {}),
         }));
       }
@@ -786,7 +787,8 @@ export const Controls: React.FC<ControlsProps> = ({
       return;
     }
     const MAX_VIDEOS = maxReferenceVideos;
-    const current = config.referenceVideos?.length || 0;
+    // Videos still uploading from an earlier selection already hold their slots.
+    const current = (config.referenceVideos?.length || 0) + uploadingReferenceVideos;
     // A model switch can leave more inputs than the new limit; never slice with a negative end.
     const room = Math.max(0, MAX_VIDEOS - current);
     const picked = Array.from(e.target.files) as File[];
@@ -1377,7 +1379,7 @@ export const Controls: React.FC<ControlsProps> = ({
                 setAttachmentError('Choose an H3 Max action that accepts videos before adding a video.');
             } else {
                 const MAX_VIDEOS = maxReferenceVideos;
-                const current = config.referenceVideos?.length || 0;
+                const current = (config.referenceVideos?.length || 0) + uploadingReferenceVideos;
                 const room = Math.max(0, MAX_VIDEOS - current);
                 const toAdd = videoFiles.slice(0, room);
                 if (toAdd.length > 0) {
