@@ -2323,8 +2323,9 @@ export const saveReferenceImage = async (image: SavedReferenceImage): Promise<vo
 
 export const getReferenceGallery = async (): Promise<SavedReferenceImage[]> => {
   if (supabase) {
+    let userId: string | null = null;
     try {
-      const userId = await getCurrentUserId();
+      userId = await getCurrentUserId();
       if (!userId) return [];
       let query = supabase
         .from('reference_images')
@@ -2355,7 +2356,10 @@ export const getReferenceGallery = async (): Promise<SavedReferenceImage[]> => {
       return [];
     } catch (error) {
       console.error('Supabase get reference gallery failed:', error);
-      return [];
+      // A changed session shows an empty library; any other failure is not
+      // "no saved references" and must reach the caller.
+      if (await getCurrentUserId().catch(() => null) !== userId) return [];
+      throw new Error('Saved references could not be loaded. Close and reopen Saved References to retry.');
     }
   }
 
