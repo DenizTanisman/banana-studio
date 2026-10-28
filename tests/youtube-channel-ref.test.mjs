@@ -47,16 +47,17 @@ const mount = props => {
 };
 const videos = (channel, count) => Array.from({ length: count }, (_, i) => ({ id: `${channel}${i}`, title: `${channel} video ${i}`, publishedAt: '2026-01-01', thumbnailUrl: '', viewCount: 1, likeCount: 0, duration: 60 }));
 
-const setup = async () => {
+const modes = { top: 'Top Performing', latest: 'Browse & Pick' };
+const setup = async (first = 'top', second = 'latest') => {
   globalThis.document = { addEventListener() {}, removeEventListener() {} };
   globalThis.window = { addEventListener() {}, removeEventListener() {}, innerWidth: 1200, innerHeight: 800 };
   globalThis.__requests = { top: [], latest: [] };
   const ui = mount({ onAddReferences() {}, onPrepareBrainstorm() {}, draftKey: 'k', remainingSlots: 14 });
   await ui.settle(); await ui.click('YT');
-  // Channel A starts Top Performing, then the user switches to channel B's Browse list.
-  await ui.type('A'); await ui.click('Look up YouTube link'); await ui.click('Top Performing');
-  await ui.click('Change'); await ui.type('B'); await ui.click('Look up YouTube link'); await ui.click('Browse & Pick');
-  const [a] = globalThis.__requests.top, [b] = globalThis.__requests.latest;
+  // Channel A starts one list, then the user switches to channel B's other list.
+  await ui.type('A'); await ui.click('Look up YouTube link'); await ui.click(modes[first]);
+  await ui.click('Change'); await ui.type('B'); await ui.click('Look up YouTube link'); await ui.click(modes[second]);
+  const [a] = globalThis.__requests[first], [b] = globalThis.__requests[second];
   assert.equal(a.playlist, 'UUA'); assert.equal(b.playlist, 'UUB');
   return { ui, a, b };
 };
@@ -79,4 +80,17 @@ test('a late failure for the previous channel neither ends loading nor shows its
   b.reject(new Error('B failed')); await ui.settle();
   assert.match(ui.text(), /B failed/);
   assert.doesNotMatch(ui.text(), /A failed/);
+});
+
+test('a late Browse response or failure for the previous channel leaves the current Top Performing list alone', async () => {
+  const { ui, a, b } = await setup('latest', 'top');
+  a.reject(new Error('A failed')); await ui.settle();
+  assert.match(ui.text(), /Finding top performing videos/);
+  b.resolve(videos('B', 3)); await ui.settle();
+  const shown = ui.text();
+  a.resolve(videos('A', 10)); await ui.settle();
+  assert.equal(ui.text(), shown);
+  assert.match(shown, /Channel B/);
+  assert.match(shown, /B video/);
+  assert.doesNotMatch(shown, /A video|A failed/);
 });
