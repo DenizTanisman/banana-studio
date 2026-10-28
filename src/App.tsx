@@ -1601,7 +1601,9 @@ const AuthorizedWorkspace: React.FC<{
 
           setConfig(prev => {
             const isH3Video = prev.mode === 'video' && prev.videoModel === 'minimax-h3';
-            const MAX_IMAGES = isH3Video ? (prev.h3MaxMode&&prev.h3MaxMode!=='auto'?H3_MAX_CAPABILITIES[getH3MaxMode(prev)].images.max+(getH3MaxMode(prev)==='reference_to_video'?new Set([prev.h3MaxOptions?.startImageId,prev.h3MaxOptions?.middleImageId,prev.h3MaxOptions?.endImageId].filter(id=>id&&prev.referenceImages.some(ref=>ref.id===id))).size:0):9) : prev.mode === 'image' && prev.imageModel === SUNBURST_MODEL ? 16 : 14;
+            const MAX_IMAGES = isH3Video ? (prev.h3MaxMode&&prev.h3MaxMode!=='auto'?H3_MAX_CAPABILITIES[getH3MaxMode(prev)].images.max+(getH3MaxMode(prev)==='reference_to_video'?new Set([prev.h3MaxOptions?.startImageId,prev.h3MaxOptions?.middleImageId,prev.h3MaxOptions?.endImageId].filter(id=>id&&prev.referenceImages.some(ref=>ref.id===id))).size:0):9)
+              : prev.mode === 'video' && prev.videoModel === 'seedance-2.0' ? 9
+              : prev.mode === 'image' && prev.imageModel === SUNBURST_MODEL ? 16 : 14;
             if ((prev.referenceImages?.length || 0) >= MAX_IMAGES) {
               toast.warning('Limit Reached', `Maximum of ${MAX_IMAGES} reference images allowed for this action.`);
               return prev;

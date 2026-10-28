@@ -601,6 +601,8 @@ export const Controls: React.FC<ControlsProps> = ({
     ? h3State.imageLimit
     : config.mode === 'video' && config.videoModel === 'seedance-2.5'
       ? (seedanceFrameOnly ? 2 : 30)
+      // Seedance 2.0 accepts at most 9 reference images (seedanceProviderError, EvoLink).
+      : config.mode === 'video' && config.videoModel === 'seedance-2.0' ? 9
       : config.mode === 'image' && config.imageModel === SUNBURST_MODEL ? 16 : 14;
   const hasStaleEnhancedPrompt = h3PromptSupported && isEnhancedPromptStale(config);
 
@@ -2122,7 +2124,8 @@ export const Controls: React.FC<ControlsProps> = ({
                   onAddReferences={(images) => {
                     // Downloads may finish after the user changes resolution or model.
                     onChange(current => {
-                      const limit = current.mode === 'video' && current.videoModel === 'minimax-h3' ? getH3MaxUIState(current).imageLimit : current.imageModel === SUNBURST_MODEL ? 16 : 14;
+                      const limit = current.mode === 'video' && current.videoModel === 'minimax-h3' ? getH3MaxUIState(current).imageLimit
+                        : current.mode === 'video' && current.videoModel === 'seedance-2.0' ? 9 : current.imageModel === SUNBURST_MODEL ? 16 : 14;
                       const refs = current.referenceImages || [];
                       return { ...current, referenceImages: [...refs, ...images.slice(0, Math.max(0, limit - refs.length))] };
                     });
