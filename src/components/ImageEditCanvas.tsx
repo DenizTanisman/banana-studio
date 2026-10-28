@@ -192,7 +192,8 @@ export const ImageEditCanvas: React.FC<ImageEditCanvasProps> = ({ source, region
           const next = { ...activeLayer };
           if (event.shiftKey) {
             const key = horizontal ? 'width' : 'height';
-            next[key] = Math.max(.005, Math.min(1 - (horizontal ? next.x : next.y), next[key] + delta));
+            // The edge limit is applied last: a minimum size must never push a layer past the image.
+            next[key] = Math.min(1 - (horizontal ? next.x : next.y), Math.max(.005, next[key] + delta));
           } else {
             const key = horizontal ? 'x' : 'y';
             next[key] = Math.max(0, Math.min(1 - (horizontal ? next.width : next.height), next[key] + delta));
