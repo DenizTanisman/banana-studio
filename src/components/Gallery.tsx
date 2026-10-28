@@ -1642,8 +1642,11 @@ export const Gallery: React.FC<GalleryProps> = ({
         const img = images.find(i => i.id === id);
         if (!img) return;
         const response = await fetch(img.url);
+        // An error body must never be saved as the media file.
+        if (!response.ok) throw new Error(`Download failed (${response.status}).`);
         const blob = await response.blob();
-        zip.file(`banana-${id}.${blob.type === 'image/jpeg' ? 'jpg' : blob.type === 'image/webp' ? 'webp' : 'png'}`, blob);
+        const ext = img.mediaType === 'video' ? 'mp4' : blob.type === 'image/jpeg' ? 'jpg' : blob.type === 'image/webp' ? 'webp' : 'png';
+        zip.file(`banana-${id}.${ext}`, blob);
       });
 
       await Promise.all(promises);
@@ -1692,6 +1695,7 @@ export const Gallery: React.FC<GalleryProps> = ({
   const handleDownloadPNG = async (media: GeneratedMedia) => {
     try {
       const response = await fetch(media.url);
+      if (!response.ok) throw new Error(`Download failed (${response.status}).`);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
 
