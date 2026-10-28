@@ -146,6 +146,9 @@ export const generateOpenAIImage = async (
       try {
         response = await fetch('/api/openai-image-enqueue', {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          // The enqueue function stops at 60 s. A request still open after that
+          // takes the reconnect path below, so the card cannot stay preparing.
+          signal: AbortSignal.timeout(75_000),
           body: JSON.stringify({ id, model: config.imageModel, provider: config.imageProvider, prompt, displayPrompt: config.prompt,
             originalPrompt: config.originalPrompt, promptPreparation: normalizePromptPreparation(config.promptPreparation), youtubeSource: config.youtubeSource,
             aspectRatio: config.aspectRatio, resolution: config.resolution, imagePromptCategory: config.imagePromptCategory,
