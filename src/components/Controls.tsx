@@ -2117,7 +2117,8 @@ export const Controls: React.FC<ControlsProps> = ({
                   onAddReferences={(images) => {
                     // Downloads may finish after the user changes resolution or model.
                     onChange(current => {
-                      const limit = current.mode === 'video' && current.videoModel === 'minimax-h3' ? getH3MaxUIState(current).imageLimit : current.imageModel === SUNBURST_MODEL ? 16 : 14;
+                      const limit = current.mode === 'video' && current.videoModel === 'minimax-h3' ? getH3MaxUIState(current).imageLimit
+                        : current.mode === 'video' && current.videoModel === 'seedance-2.0' ? 9 : current.imageModel === SUNBURST_MODEL ? 16 : 14;
                       const refs = current.referenceImages || [];
                       return { ...current, referenceImages: [...refs, ...images.slice(0, Math.max(0, limit - refs.length))] };
                     });
