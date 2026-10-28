@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { codexArguments, codexAvailable, codexImagePrompt, requestCodexImage } from '../api/_lib/codexImage.ts';
+import { codexArguments, codexAvailable, codexImagePrompt, findCodexBinary, hasChatGPTLogin, requestCodexImage } from '../api/_lib/codexImage.ts';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 const withEnv = async (values, run) => {
@@ -39,8 +39,24 @@ test('Codex is offered only in the desktop runtime with a ChatGPT sign-in', { sk
   try {
     const binary = fakeCodex(home);
     await withEnv({ BANANA_RUNTIME: undefined, CODEX_HOME: home, CODEX_BIN: binary }, () => assert.equal(codexAvailable(), false));
+    await withEnv({ BANANA_RUNTIME: 'local', CODEX_HOME: home, CODEX_BIN: binary, CODEX_ENABLED: 'false' }, () => assert.equal(codexAvailable(), false));
+    // Positive control. codexAvailable() caches this result, so the conditions below check its two inputs directly.
+    await withEnv({ BANANA_RUNTIME: 'local', CODEX_HOME: home, CODEX_BIN: binary, CODEX_ENABLED: undefined }, () => assert.equal(codexAvailable(), true));
+    await withEnv({ CODEX_HOME: home, CODEX_BIN: binary }, () => {
+      assert.equal(findCodexBinary(), binary);
+      assert.equal(hasChatGPTLogin(), true);
+    });
+    // A valid binary with an API-key Codex login is not a ChatGPT plan.
     fs.writeFileSync(path.join(home, 'auth.json'), JSON.stringify({ auth_mode: 'apikey' }));
-    await withEnv({ BANANA_RUNTIME: 'local', CODEX_HOME: home, CODEX_BIN: path.join(home, 'missing') }, () => assert.equal(codexAvailable(), false));
+    await withEnv({ CODEX_HOME: home, CODEX_BIN: binary }, () => { assert.equal(findCodexBinary(), binary); assert.equal(hasChatGPTLogin(), false); });
+    // A ChatGPT login without a usable binary.
+    fs.writeFileSync(path.join(home, 'auth.json'), JSON.stringify({ auth_mode: 'chatgpt' }));
+    await withEnv({ CODEX_HOME: home, CODEX_BIN: path.join(home, 'missing') }, () => { assert.equal(hasChatGPTLogin(), true); assert.equal(findCodexBinary(), null); });
+    // A shell shim is refused even when it exists: it would need a shell to start.
+    const shim = path.join(home, 'codex.cmd');
+    fs.writeFileSync(shim, '@echo off');
+    await withEnv({ CODEX_BIN: shim }, () => assert.equal(findCodexBinary(), null));
+    await withEnv({ CODEX_BIN: 'codex' }, () => assert.equal(findCodexBinary(), null));
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
 

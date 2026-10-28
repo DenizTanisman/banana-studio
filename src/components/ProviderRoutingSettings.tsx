@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { MODEL_ROUTES, PROVIDER_LABELS, resolveProvider, type AIProvider, type ProviderAvailability, type ProviderChoice } from '../lib/providers';
 import { getProviderAvailability, getProviderPreferences, saveProviderPreference } from '../services/providerRouting';
 import { Dropdown } from './ControlDropdown';
+import { isLocalWorkspace } from '../lib/config/runtimeConfig';
 
 const EVENT = 'banana-provider-routes-changed';
 const MODELS: Record<string,string> = {
@@ -38,7 +39,8 @@ export function ProviderRouteControl({ model, compact = false, showError = true 
     finally { setSaving(false); }
   };
   const options = [{value:'auto',label:`Auto${route.provider && route.choice === 'auto' ? ` · ${PROVIDER_LABELS[route.provider]}` : ''}`},
-    ...(MODEL_ROUTES[model] || []).map(provider => ({value:provider,label:`${PROVIDER_LABELS[provider]}${route.available[provider] ? '' : provider === 'codex' ? ' · sign-in needed' : ' · key needed'}`}))];
+    // Codex runs the desktop user's own CLI; hosted workspaces never offer it.
+    ...(MODEL_ROUTES[model] || []).filter(provider => provider !== 'codex' || isLocalWorkspace()).map(provider => ({value:provider,label:`${PROVIDER_LABELS[provider]}${route.available[provider] ? '' : provider === 'codex' ? ' · sign-in needed' : ' · key needed'}`}))];
   return <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
     {compact ? <><span className="text-gray-500">Provider</span><Dropdown label="Provider" value={route.choice} options={options} onSelect={value => void save(value)} disabled={saving} compact /></> : <label className="flex items-center gap-2 text-gray-400">Provider
       <select aria-label={`${MODELS[model] || model} provider`} value={route.choice} disabled={saving}

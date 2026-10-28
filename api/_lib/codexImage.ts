@@ -25,7 +25,8 @@ const candidateDirectories = () => {
 
 export const findCodexBinary = (): string | null => {
   const configured = process.env.CODEX_BIN?.trim();
-  if (configured) return path.isAbsolute(configured) && fs.existsSync(configured) ? configured : null;
+  // Windows .cmd/.bat shims cannot be started without a shell, and the prompt must never pass through one.
+  if (configured) return path.isAbsolute(configured) && !/\.(cmd|bat)$/i.test(configured) && fs.existsSync(configured) ? configured : null;
   for (const directory of candidateDirectories()) {
     const file = path.join(directory, exe);
     try { if (fs.statSync(file).isFile()) return file; } catch { /* Not installed here. */ }
