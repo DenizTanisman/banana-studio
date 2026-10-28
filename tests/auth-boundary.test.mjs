@@ -18,7 +18,7 @@ const stubs = {
   react: reactStub,
   'react/jsx-runtime': 'export const jsx=(type,props)=>({type,props}),jsxs=jsx,Fragment="fragment";',
   authService: `const f=globalThis.__authFixture;
-    export const getSession=async()=>f.session;
+    export const getSession=async()=>{if(f.sessionError)throw f.sessionError;return f.session;};
     export const checkUserAuthorization=async id=>{f.checks.push(id);return f.authorization.shift();};
     export const getProfile=async()=>({id:f.session.user.id,role:'admin'});
     export const onAuthStateChange=()=>({data:{subscription:{unsubscribe(){}}}});
@@ -35,15 +35,15 @@ const bundle = await build({ entryPoints: [`${root}/src/components/AuthBoundary.
 const { AuthBoundary } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 5));
-function mount(t, authorization) {
+function mount(t, authorization, fixture = {}) {
   const listeners = {};
   const on = (name, fn) => { (listeners[name] ||= []).push(fn); };
   const previous = { window: globalThis.window, document: globalThis.document };
   globalThis.window = { setInterval: () => 1, clearInterval() {}, setTimeout: fn => setTimeout(fn, 0), addEventListener: on, removeEventListener() {} };
   globalThis.document = { visibilityState: 'visible', addEventListener: on, removeEventListener() {} };
   t.after(() => Object.assign(globalThis, previous));
-  Object.assign(f, { hooks: {}, hook: 0, effects: [], dirty: false, checks: [], cleared: [], authorization, signOutError: null,
-    session: { user: { id: 'user-1' } } });
+  Object.assign(f, { hooks: {}, hook: 0, effects: [], dirty: false, checks: [], cleared: [], authorization, signOutError: null, sessionError: null,
+    session: { user: { id: 'user-1' } } }, fixture);
   let output;
   let signOut;
   const render = () => {
@@ -78,6 +78,30 @@ test('a network blip during a re-check keeps an already verified workspace open'
   await app.flush();
   assert.equal(f.checks.length, 3);
   assert.equal(app.view.type, 'workspace');
+});
+
+test('a session read blip keeps a verified workspace open but first entry fails closed', async t => {
+  const app = mount(t, ['authorized']);
+  await app.flush();
+  f.sessionError = new TypeError('Failed to fetch');
+  app.fire('focus');
+  await app.flush();
+  assert.equal(app.view.type, 'workspace');
+  assert.deepEqual(f.cleared.filter(Boolean), [], 'the local media cache is not cleared');
+  f.sessionError = null;
+  f.authorization = ['authorized'];
+  app.fire('online');
+  await app.flush();
+  assert.equal(f.checks.length, 2);
+  assert.equal(app.view.type, 'workspace');
+});
+
+test('a session read blip before first verification never grants access', async t => {
+  const app = mount(t, ['authorized'], { sessionError: new TypeError('Failed to fetch') });
+  await app.flush();
+  assert.equal(app.view.type, 'login');
+  assert.equal(app.view.props.notice, 'unauthorized');
+  assert.deepEqual(f.checks, []);
 });
 
 test('a definite allowlist answer still closes the workspace', async t => {
@@ -138,6 +162,11 @@ test('allowlist reads tell an outage apart from a denial', async () => {
   assert.equal(await checkUserAuthorization('user-2'), 'unauthorized');
   f.allowlist = async () => ({ data: null, error: { message: 'TypeError: Failed to fetch' } });
   assert.equal(await checkUserAuthorization('user-1'), 'unavailable');
+  // PostgREST puts the HTTP status beside the error, not on it.
+  f.allowlist = async () => ({ data: null, error: { message: 'Bad gateway' }, status: 503 });
+  assert.equal(await checkUserAuthorization('user-1'), 'unavailable');
+  f.allowlist = async () => ({ data: null, error: { message: 'JWT expired' }, status: 401 });
+  assert.equal(await checkUserAuthorization('user-1'), 'unauthorized');
   f.getUser = async () => { throw new TypeError('fetch failed'); };
   assert.equal(await checkUserAuthorization('user-1'), 'unavailable');
   // A revoked or expired identity and unexpected errors stay definite denials.

@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { UserProfile } from '../types';
 import { checkUserAuthorization, getProfile, getSession, onAuthStateChange, signOut } from '../services/authService';
 import { clearLocalMediaCache } from '../services/storageService';
+import { isTransientReadError } from '../lib/shared/transientRead';
 import { LoginScreen, LoginNotice } from './LoginScreen';
 
 type Access = { userId: string; profile: UserProfile | null };
@@ -99,8 +100,11 @@ export function AuthBoundary({ children }: {
         setAccess({ userId, profile });
         setNotice(null);
         setLoading(false);
-      } catch {
+      } catch (error) {
         if (!isCurrent(check)) return;
+        // A failed session read is a blip too: keep an open workspace and retry
+        // on the next refresh. First entry still fails closed.
+        if (verified.current && verified.current === identity.current && isTransientReadError(error)) return;
         forgetIdentity();
         setNotice('unauthorized');
         setLoading(false);

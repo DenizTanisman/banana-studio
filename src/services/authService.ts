@@ -110,13 +110,14 @@ export const checkUserAuthorization = async (expectedUserId?: string): Promise<A
       // LIKE treats '_' and '%' as wildcards, both valid email characters.
       const email = user.email.trim().toLowerCase();
       const literalEmail = email.replace(/[\\%_]/g, '\\$&');
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from('authorized_emails')
         .select('email')
         .eq('is_active', true)
         .ilike('email', literalEmail)
         .maybeSingle();
-      if (error) throw error;
+      // PostgREST keeps the HTTP status beside the error; 502/503/504 are outages.
+      if (error) throw Object.assign(error, { status });
       return !!data && String(data.email || '').trim().toLowerCase() === email ? 'authorized' : 'unauthorized';
     } catch (error) {
       lastError = error;
