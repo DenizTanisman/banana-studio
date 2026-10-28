@@ -17,14 +17,14 @@ async function handler(file,name,parameters,after='') {
   return (await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'))).create;
 }
 const createGlobal=await handler('../src/components/Controls.tsx','handleKeyDown','state',`const {canGenerate=true,isBrainstormActive=false,isBrainstormPanelOpen=false,handleGenerate,handleBrainstorm,setIsBrainstormPanelOpen,document}=state;`);
-const createTextarea=await handler('../src/components/Controls.tsx','handleTextareaKeyDown','canGenerate,handleGenerate','const h3PromptSupported=false;');
+const createTextarea=await handler('../src/components/Controls.tsx','handleTextareaKeyDown','canGenerate,handleGenerate,document','const h3PromptSupported=false;');
 const createHistory=await handler('../src/components/HistoryPanel.tsx','handleKeyDown','onClose,document');
 const createAdmin=await handler('../src/components/AdminPanel.tsx','handleKeyDown','onClose');
 const event=(key='Enter',extra={})=>({key,ctrlKey:true,metaKey:false,repeat:false,isComposing:false,nativeEvent:{isComposing:false},defaultPrevented:false,preventDefault(){this.defaultPrevented=true;},...extra});
 function setup(overrides={}) {
   const calls={generate:0,brainstorm:0,closed:0};
   const state={handleGenerate:()=>calls.generate++,handleBrainstorm:()=>calls.brainstorm++,setIsBrainstormPanelOpen:()=>calls.closed++,document:{querySelector:()=>null},...overrides};
-  return {calls,global:createGlobal(state),textarea:createTextarea(state.canGenerate??true,state.handleGenerate)};
+  return {calls,global:createGlobal(state),textarea:createTextarea(state.canGenerate??true,state.handleGenerate,state.document)};
 }
 
 test('textarea shortcut submits once after document bubbling, and busy state does not change validation',()=>{
@@ -34,13 +34,13 @@ test('textarea shortcut submits once after document bubbling, and busy state doe
 });
 test('repeated, composing and already consumed events never submit; Brainstorm owns its shortcut',()=>{
   for(const extra of [{repeat:true},{isComposing:true,nativeEvent:{isComposing:true}},{defaultPrevented:true}]){
-    const f=setup(),e=event('Enter',extra);if(!extra.defaultPrevented)f.textarea(e);f.global(e);assert.equal(f.calls.generate,0);
+    const f=setup(),e=event('Enter',extra);f.textarea(e);f.global(e);assert.equal(f.calls.generate,0);
   }
   const f=setup({canGenerate:false,isBrainstormActive:true});const e=event();f.textarea(e);f.global(e);assert.equal(f.calls.generate,0);assert.equal(f.calls.brainstorm,1);
 });
 test('modal dialogs retain shortcuts and Escape; background panels cannot close or generate',()=>{
   const document={querySelector:()=>({})};
-  const f=setup({document,isBrainstormPanelOpen:true});f.global(event());f.global(event('Escape'));assert.deepEqual(f.calls,{generate:0,brainstorm:0,closed:0});
+  const f=setup({document,isBrainstormPanelOpen:true});f.textarea(event());f.textarea(event('Enter',{ctrlKey:false,metaKey:true}));f.global(event());f.global(event('Escape'));assert.deepEqual(f.calls,{generate:0,brainstorm:0,closed:0});
   let history=0,admin=0;const h=createHistory(()=>history++,document),a=createAdmin(()=>admin++);const e=event('Escape');h(e);a(e);assert.equal(history,0);assert.equal(admin,1);
 });
 test('Escape closes one eligible panel and respects previously prevented events',()=>{

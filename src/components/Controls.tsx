@@ -1709,7 +1709,8 @@ export const Controls: React.FC<ControlsProps> = ({
   };
 
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.repeat || e.nativeEvent.isComposing) return;
+    if (e.defaultPrevented || e.repeat || e.nativeEvent.isComposing) return;
+    if (document.querySelector('[aria-modal="true"], dialog[open]')) return;
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       if (canGenerate) {
         e.preventDefault();
