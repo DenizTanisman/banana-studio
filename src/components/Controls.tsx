@@ -478,6 +478,7 @@ export const Controls: React.FC<ControlsProps> = ({
 
   // Reference Gallery State
   const [refGallery, setRefGallery] = useState<SavedReferenceImage[]>([]);
+  const [refGalleryError, setRefGalleryError] = useState<string | null>(null);
   const [isRefGalleryOpen, setIsRefGalleryOpen] = useState(false);
   const [refGalleryTab, setRefGalleryTab] = useState<'images' | 'people'>('images');
   const [draggedRefId, setDraggedRefId] = useState<string | null>(null);
@@ -505,8 +506,13 @@ export const Controls: React.FC<ControlsProps> = ({
   useEffect(() => {
     let cancelled = false;
     const loadRefGallery = async () => {
-      const images = await getReferenceGallery();
-      if (!cancelled) setRefGallery(images);
+      try {
+        const images = await getReferenceGallery();
+        if (!cancelled) { setRefGallery(images); setRefGalleryError(null); }
+      } catch (error) {
+        // Keep the last loaded list: a failed refresh is not an empty library.
+        if (!cancelled) setRefGalleryError(error instanceof Error ? error.message : 'Saved references could not be loaded.');
+      }
     };
     void loadRefGallery();
     return () => { cancelled = true; };
@@ -595,7 +601,12 @@ export const Controls: React.FC<ControlsProps> = ({
     ? h3State.imageLimit
     : config.mode === 'video' && config.videoModel === 'seedance-2.5'
       ? (seedanceFrameOnly ? 2 : 30)
+      // Seedance 2.0 accepts at most 9 reference images (seedanceProviderError, EvoLink).
+      : config.mode === 'video' && config.videoModel === 'seedance-2.0' ? 9
       : config.mode === 'image' && config.imageModel === SUNBURST_MODEL ? 16 : 14;
+  // Uploads finish after awaits; they use the limit of the latest committed draft.
+  const attachLimitsRef = useRef({ videos: maxReferenceVideos, config });
+  useLayoutEffect(() => { attachLimitsRef.current = { videos: maxReferenceVideos, config }; });
   const hasStaleEnhancedPrompt = h3PromptSupported && isEnhancedPromptStale(config);
 
   const formatVideoModel = (model?: VideoModelId) => model === 'seedance-2.0'
@@ -764,20 +775,27 @@ export const Controls: React.FC<ControlsProps> = ({
           : []
       );
 
+      const latest = attachLimitsRef.current;
       if (newRefs.length > 0) {
+        // Never exceed the latest limit (the operation may have changed while uploading),
+        // even if another selection finished first.
         onChange(previous => ({
           ...previous,
-          referenceVideos: [...(previous.referenceVideos || []), ...newRefs],
+          referenceVideos: [...(previous.referenceVideos || []), ...newRefs.slice(0, Math.max(0, attachLimitsRef.current.videos - (previous.referenceVideos?.length || 0)))],
           ...(switchToVideo ? { mode: 'video' as const } : {}),
         }));
       }
       if (failures.length > 0) {
         setAttachmentError(failures.join('\n'));
       }
+      if (newRefs.length > Math.max(0, latest.videos - (latest.config.referenceVideos?.length || 0))) addAttachmentError(`Limit reached: ${latest.videos} videos max.`);
     } finally {
       setUploadingReferenceVideos(count => Math.max(0, count - files.length));
     }
   };
+
+  // Several attachment problems in one action are all shown.
+  const addAttachmentError = (message: string) => setAttachmentError(previous => previous ? `${previous} ${message}` : message);
 
   const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -787,15 +805,22 @@ export const Controls: React.FC<ControlsProps> = ({
       return;
     }
     const MAX_VIDEOS = maxReferenceVideos;
-    const current = config.referenceVideos?.length || 0;
-    const files = (Array.from(e.target.files) as File[]).slice(0, MAX_VIDEOS - current);
-    await processVideoFiles(files);
+    // Videos still uploading from an earlier selection already hold their slots.
+    const current = (config.referenceVideos?.length || 0) + uploadingReferenceVideos;
+    // A model switch can leave more inputs than the new limit; never slice with a negative end.
+    const room = Math.max(0, MAX_VIDEOS - current);
+    const picked = Array.from(e.target.files) as File[];
+    await processVideoFiles(picked.slice(0, room));
+    // After processing (which clears earlier errors), keeping any upload error it reported.
+    if (picked.length > room) addAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   const processAudioFiles = async (files: File[], switchToVideo = false) => {
     const MAX_AUDIOS = maxReferenceAudios;
-    const toAdd = files.slice(0, Math.max(0, MAX_AUDIOS - (config.referenceAudios?.length || 0)));
+    const room = Math.max(0, MAX_AUDIOS - (config.referenceAudios?.length || 0));
+    if (files.length > room) addAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
+    const toAdd = files.slice(0, room);
     if (toAdd.length === 0) return;
     const newRefs = await Promise.all(toAdd.map(async file => {
       const url = URL.createObjectURL(file);
@@ -1191,7 +1216,9 @@ export const Controls: React.FC<ControlsProps> = ({
         const media = JSON.parse(mediaData);
         // Fetch the image and convert to base64
         const response = await fetch(media.url);
+        if (!response.ok) throw new Error(`Gallery image download failed (${response.status})`);
         const blob = await response.blob();
+        if (!blob.size || /^(?:text\/|application\/json)/i.test(blob.type)) throw new Error('Gallery image download did not return an image.');
         const reader = new FileReader();
         reader.onload = async () => {
           const base64 = reader.result as string;
@@ -1379,11 +1406,13 @@ export const Controls: React.FC<ControlsProps> = ({
                 setAttachmentError('Choose an H3 Max action that accepts videos before adding a video.');
             } else {
                 const MAX_VIDEOS = maxReferenceVideos;
-                const current = config.referenceVideos?.length || 0;
-                const toAdd = videoFiles.slice(0, MAX_VIDEOS - current);
+                const current = (config.referenceVideos?.length || 0) + uploadingReferenceVideos;
+                const room = Math.max(0, MAX_VIDEOS - current);
+                const toAdd = videoFiles.slice(0, room);
                 if (toAdd.length > 0) {
                     await processVideoFiles(toAdd, true);
                 }
+                if (videoFiles.length > room) addAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
             }
         }
 
@@ -1423,7 +1452,9 @@ export const Controls: React.FC<ControlsProps> = ({
               return;
             }
             const response = await fetch(media.url);
+            if (!response.ok) throw new Error(`Gallery image download failed (${response.status})`);
             const blob = await response.blob();
+            if (!blob.size || /^(?:text\/|application\/json)/i.test(blob.type)) throw new Error('Gallery image download did not return an image.');
             await processImageFiles([blob]);
         } catch (error) {
             console.error("Failed to process dropped gallery item", error);
@@ -1511,7 +1542,8 @@ export const Controls: React.FC<ControlsProps> = ({
   // --- Keyboard Shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
+      if (e.defaultPrevented || e.repeat || (e as any).isComposing) return;
+      if (document.querySelector('[aria-modal="true"], dialog[open]')) return;
       const isMod = e.metaKey || e.ctrlKey;
 
       // The open Brainstorm panel owns submission, including the shortcut.
@@ -1522,10 +1554,15 @@ export const Controls: React.FC<ControlsProps> = ({
           handleBrainstorm();
           return;
         }
-        const canGen = isH3VideoConfig ? !getH3MaxInputError(config) : config.prompt.trim() || config.referenceImages.length > 0;
-        if (canGen && activeRequests === 0 && !hasStaleEnhancedPrompt) {
+        if (canGenerate) {
           handleGenerate();
         }
+        return;
+      }
+
+      if (e.key === 'Escape' && isBrainstormPanelOpen) {
+        e.preventDefault();
+        setIsBrainstormPanelOpen(false);
         return;
       }
 
@@ -1694,6 +1731,15 @@ export const Controls: React.FC<ControlsProps> = ({
   };
 
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.defaultPrevented || e.repeat || e.nativeEvent.isComposing) return;
+    if (document.querySelector('[aria-modal="true"], dialog[open]')) return;
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (canGenerate) {
+        e.preventDefault();
+        handleGenerate();
+      }
+      return;
+    }
     if (!h3PromptSupported) return;
     if (mentionState.active && (config.referenceImages.length > 0 || (config.referenceVideos?.length || 0) > 0 || (config.referenceAudios?.length || 0) > 0)) {
         const groupMentions = findPersonMentions(config.referenceImages, mentionState.query).map(group => ({ ...group, type: 'group' as const, count: group.images.length }));
@@ -1828,6 +1874,14 @@ export const Controls: React.FC<ControlsProps> = ({
     }
   }, [config, isSeedance25FrameToVideo, providerRoute.provider, onChange]);
 
+  const requiresSourceVideo = isVideoMode && selectedVideoModel !== 'minimax-h3' && selectedVideoOperation !== 'generate';
+  const h3InputError = isH3VideoConfig ? getH3MaxInputError(config) : null;
+  const isSunburst = config.imageModel === SUNBURST_MODEL;
+  const routeInputError = providerRoute.error || (config.mode === 'video' && selectedVideoModel !== 'minimax-h3' && providerRoute.provider ? seedanceProviderError(providerRoute.provider, { videoModel: selectedVideoModel, mode: selectedVideoOperation === 'edit' ? 'video_edit' : selectedVideoOperation === 'extend' ? 'video_extend' : hasSeedanceFrameRoles ? 'image_to_video' : config.referenceImages.length || currentReferenceVideos.length || currentReferenceAudios.length ? 'reference_to_video' : 'text_to_video', duration: selectedVideoOperation === 'edit' ? -1 : config.videoDuration, quality: config.videoQuality, aspectRatio: config.videoAspectRatio, imageUrls: config.referenceImages.map(() => ''), videoUrls: currentReferenceVideos.map(() => ''), audioUrls: currentReferenceAudios.map(() => ''), referenceEditMode: selectedVideoOperation === 'reference_edit' }) : undefined);
+  const canGenerate = !routeInputError && !isDraftLoading && (isVideoMode
+    ? uploadingReferenceVideos === 0 && !hasStaleEnhancedPrompt && (isH3VideoConfig ? !h3InputError : config.prompt.trim().length > 0 && (!requiresSourceVideo || (config.referenceVideos?.length || 0) > 0))
+    : !isBrainstormActive && !sunburstError && !hasStaleEnhancedPrompt && (config.prompt.trim().length > 0 || (!isSunburst && config.referenceImages.length > 0)));
+
   if (isMinimized) {
     return (
         <div ref={generationBarRef} className="fixed bottom-4 left-1/2 z-[120] w-[calc(100%-32px)] max-w-[480px] -translate-x-1/2 sm:bottom-5 sm:w-auto">
@@ -1849,10 +1903,6 @@ export const Controls: React.FC<ControlsProps> = ({
     );
   }
 
-  const requiresSourceVideo = isVideoMode && selectedVideoModel !== 'minimax-h3' && selectedVideoOperation !== 'generate';
-  const h3InputError = isH3VideoConfig ? getH3MaxInputError(config) : null;
-  const isSunburst = config.imageModel === SUNBURST_MODEL;
-  const routeInputError = providerRoute.error || (config.mode === 'video' && selectedVideoModel !== 'minimax-h3' && providerRoute.provider ? seedanceProviderError(providerRoute.provider, { videoModel: selectedVideoModel, mode: selectedVideoOperation === 'edit' ? 'video_edit' : selectedVideoOperation === 'extend' ? 'video_extend' : hasSeedanceFrameRoles ? 'image_to_video' : config.referenceImages.length || currentReferenceVideos.length || currentReferenceAudios.length ? 'reference_to_video' : 'text_to_video', duration: selectedVideoOperation === 'edit' ? -1 : config.videoDuration, quality: config.videoQuality, aspectRatio: config.videoAspectRatio, imageUrls: config.referenceImages.map(() => ''), videoUrls: currentReferenceVideos.map(() => ''), audioUrls: currentReferenceAudios.map(() => ''), referenceEditMode: selectedVideoOperation === 'reference_edit' }) : undefined);
   const modelInputError = routeInputError || h3InputError || sunburstError || (
     isH3VideoConfig ? null : isVideoMode
       ? requiresSourceVideo && !(config.referenceVideos?.length)
@@ -1883,9 +1933,6 @@ export const Controls: React.FC<ControlsProps> = ({
   const imageCostLabel = imageCostPreview.label;
   const brainstormImageCount = brainstormIdeaCount * config.count;
   const brainstormCostPreview = getImageCostPreview({ ...config, imageProvider: providerRoute.provider }, brainstormImageCount, imageCostHistory);
-  const canGenerate = !routeInputError && !isDraftLoading && (isVideoMode
-    ? uploadingReferenceVideos === 0 && !hasStaleEnhancedPrompt && (isH3VideoConfig ? !h3InputError : config.prompt.trim().length > 0 && (!requiresSourceVideo || (config.referenceVideos?.length || 0) > 0))
-    : !isBrainstormActive && !sunburstError && !hasStaleEnhancedPrompt && (config.prompt.trim().length > 0 || (!isSunburst && config.referenceImages.length > 0)));
   // While jobs run the button keeps its lime surface so another generation can be
   // queued, so busy-state labels must stay dark there and only turn light on the
   // disabled gray surface.
@@ -2051,6 +2098,7 @@ export const Controls: React.FC<ControlsProps> = ({
                               <button type="button" role="tab" aria-selected={refGalleryTab === 'images'} onClick={() => setRefGalleryTab('images')} className={`flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs ${refGalleryTab === 'images' ? 'bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:bg-white/5'}`}><ImageIcon className="h-3.5 w-3.5" />Images <span className="text-[10px] opacity-60">{refGallery.length}</span></button>
                               <button type="button" role="tab" aria-selected={refGalleryTab === 'people'} onClick={() => setRefGalleryTab('people')} className={`flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs ${refGalleryTab === 'people' ? 'bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:bg-white/5'}`}><Users className="h-3.5 w-3.5" />People</button>
                             </div>
+                            {refGalleryError && <p role="alert" className="px-3 pt-2 text-[11px] text-red-400">{refGalleryError}</p>}
                             {refGalleryTab === 'people' ? <SavedPeople references={config.referenceImages} gallery={refGallery} draft={config}
                               addDisabled={isH3VideoConfig && h3State.mode !== 'reference_to_video' ? 'Choose Reference to Video Max to add a saved person, or attach individual photos for this action.' : !isH3VideoConfig && config.referenceImages.some(image => image.isFirstFrame || image.isLastFrame) ? 'Remove frame roles before adding people.' : undefined}
                               onAdd={person => onChange(addSavedPersonToDraft(config, person, maxReferenceImages))}
@@ -2090,7 +2138,8 @@ export const Controls: React.FC<ControlsProps> = ({
                   onAddReferences={(images) => {
                     // Downloads may finish after the user changes resolution or model.
                     onChange(current => {
-                      const limit = current.mode === 'video' && current.videoModel === 'minimax-h3' ? getH3MaxUIState(current).imageLimit : current.imageModel === SUNBURST_MODEL ? 16 : 14;
+                      const limit = current.mode === 'video' && current.videoModel === 'minimax-h3' ? getH3MaxUIState(current).imageLimit
+                        : current.mode === 'video' && current.videoModel === 'seedance-2.0' ? 9 : current.imageModel === SUNBURST_MODEL ? 16 : 14;
                       const refs = current.referenceImages || [];
                       return { ...current, referenceImages: [...refs, ...images.slice(0, Math.max(0, limit - refs.length))] };
                     });
