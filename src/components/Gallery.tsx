@@ -1091,8 +1091,15 @@ export const Gallery: React.FC<GalleryProps> = ({
     };
 
     container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [hasMoreImages, allVisibleImages.length]);
+    // A page that does not fill the view cannot scroll, so also check after
+    // each render of more items, a column change and a window resize.
+    handleScroll();
+    window.addEventListener('resize', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, [hasMoreImages, allVisibleImages.length, displayCount, gridCols]);
 
   useEffect(() => {
     setComparisonIds(null);
