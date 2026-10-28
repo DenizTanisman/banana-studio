@@ -604,6 +604,9 @@ export const Controls: React.FC<ControlsProps> = ({
       // Seedance 2.0 accepts at most 9 reference images (seedanceProviderError, EvoLink).
       : config.mode === 'video' && config.videoModel === 'seedance-2.0' ? 9
       : config.mode === 'image' && config.imageModel === SUNBURST_MODEL ? 16 : 14;
+  // Uploads finish after awaits; they use the limit of the latest committed draft.
+  const attachLimitsRef = useRef({ videos: maxReferenceVideos, config });
+  useLayoutEffect(() => { attachLimitsRef.current = { videos: maxReferenceVideos, config }; });
   const hasStaleEnhancedPrompt = h3PromptSupported && isEnhancedPromptStale(config);
 
   const formatVideoModel = (model?: VideoModelId) => model === 'seedance-2.0'
@@ -768,20 +771,27 @@ export const Controls: React.FC<ControlsProps> = ({
           : []
       );
 
+      const latest = attachLimitsRef.current;
       if (newRefs.length > 0) {
+        // Never exceed the latest limit (the operation may have changed while uploading),
+        // even if another selection finished first.
         onChange(previous => ({
           ...previous,
-          referenceVideos: [...(previous.referenceVideos || []), ...newRefs],
+          referenceVideos: [...(previous.referenceVideos || []), ...newRefs.slice(0, Math.max(0, attachLimitsRef.current.videos - (previous.referenceVideos?.length || 0)))],
           ...(switchToVideo ? { mode: 'video' as const } : {}),
         }));
       }
       if (failures.length > 0) {
         setAttachmentError(failures.join('\n'));
       }
+      if (newRefs.length > Math.max(0, latest.videos - (latest.config.referenceVideos?.length || 0))) addAttachmentError(`Limit reached: ${latest.videos} videos max.`);
     } finally {
       setUploadingReferenceVideos(count => Math.max(0, count - files.length));
     }
   };
+
+  // Several attachment problems in one action are all shown.
+  const addAttachmentError = (message: string) => setAttachmentError(previous => previous ? `${previous} ${message}` : message);
 
   const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -791,9 +801,14 @@ export const Controls: React.FC<ControlsProps> = ({
       return;
     }
     const MAX_VIDEOS = maxReferenceVideos;
-    const current = config.referenceVideos?.length || 0;
-    const files = (Array.from(e.target.files) as File[]).slice(0, MAX_VIDEOS - current);
-    await processVideoFiles(files);
+    // Videos still uploading from an earlier selection already hold their slots.
+    const current = (config.referenceVideos?.length || 0) + uploadingReferenceVideos;
+    // A model switch can leave more inputs than the new limit; never slice with a negative end.
+    const room = Math.max(0, MAX_VIDEOS - current);
+    const picked = Array.from(e.target.files) as File[];
+    await processVideoFiles(picked.slice(0, room));
+    // After processing (which clears earlier errors), keeping any upload error it reported.
+    if (picked.length > room) addAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
@@ -807,7 +822,9 @@ export const Controls: React.FC<ControlsProps> = ({
     }
     const MAX_AUDIOS = maxReferenceAudios;
     const current = config.referenceAudios?.length || 0;
-    const files = (Array.from(e.target.files) as File[]).slice(0, MAX_AUDIOS - current);
+    const room = Math.max(0, MAX_AUDIOS - current);
+    if (e.target.files.length > room) addAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
+    const files = (Array.from(e.target.files) as File[]).slice(0, room);
     const newRefs = await Promise.all(files.map(async file => {
       const url = URL.createObjectURL(file);
       return {
@@ -1378,11 +1395,13 @@ export const Controls: React.FC<ControlsProps> = ({
                 setAttachmentError('Choose an H3 Max action that accepts videos before adding a video.');
             } else {
                 const MAX_VIDEOS = maxReferenceVideos;
-                const current = config.referenceVideos?.length || 0;
-                const toAdd = videoFiles.slice(0, MAX_VIDEOS - current);
+                const current = (config.referenceVideos?.length || 0) + uploadingReferenceVideos;
+                const room = Math.max(0, MAX_VIDEOS - current);
+                const toAdd = videoFiles.slice(0, room);
                 if (toAdd.length > 0) {
                     await processVideoFiles(toAdd, true);
                 }
+                if (videoFiles.length > room) addAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
             }
         }
 
@@ -1392,7 +1411,9 @@ export const Controls: React.FC<ControlsProps> = ({
             } else {
                 const MAX_AUDIOS = maxReferenceAudios;
                 const current = config.referenceAudios?.length || 0;
-                const toAdd = audioFiles.slice(0, MAX_AUDIOS - current);
+                const room = Math.max(0, MAX_AUDIOS - current);
+                if (audioFiles.length > room) addAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
+                const toAdd = audioFiles.slice(0, room);
                 if (toAdd.length > 0) {
                     const newRefs = await Promise.all(toAdd.map(async f => {
                         const url = URL.createObjectURL(f);
