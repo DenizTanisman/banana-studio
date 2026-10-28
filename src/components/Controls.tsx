@@ -595,6 +595,8 @@ export const Controls: React.FC<ControlsProps> = ({
     ? h3State.imageLimit
     : config.mode === 'video' && config.videoModel === 'seedance-2.5'
       ? (seedanceFrameOnly ? 2 : 30)
+      // Seedance 2.0 accepts at most 9 reference images (seedanceProviderError, EvoLink).
+      : config.mode === 'video' && config.videoModel === 'seedance-2.0' ? 9
       : config.mode === 'image' && config.imageModel === SUNBURST_MODEL ? 16 : 14;
   const hasStaleEnhancedPrompt = h3PromptSupported && isEnhancedPromptStale(config);
 
