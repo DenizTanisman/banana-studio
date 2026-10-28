@@ -6,10 +6,10 @@ import { fileURLToPath } from 'node:url';
 // A minimal hook renderer, as in gallery-image-zoom.test.mjs: state slots, effects after render, re-render on change.
 const react = `const R=()=>globalThis.__renderer;export const useState=v=>R().useState(v),useRef=v=>R().useRef(v),useEffect=(f,d)=>R().useEffect(f,d),useCallback=(f,d)=>R().useMemo(()=>f,d),useMemo=(f,d)=>R().useMemo(f,d);
   const h=(type,props,...children)=>({type,props:{...props,children}});export default {createElement:h,Fragment:'Fragment'};`;
-const youtube = `export const isYouTubeConfigured=async()=>true;export const detectInputType=()=>'channel';
-  export const resolveChannel=async input=>({id:'UC'+input,title:input,thumbnailUrl:'',uploadsPlaylistId:'UU'+input});
+const youtube = `export const isYouTubeConfigured=async()=>true;export const detectInputType=raw=>({kind:'channel',raw});
+  export const resolveChannel=async input=>({id:'UC'+input,title:'Channel '+input,thumbnailUrl:'',uploadsPlaylistId:'UU'+input});
   export const getVideoInfo=async()=>{throw new Error('unused')};
-  const gate=list=>()=>new Promise(resolve=>globalThis.__requests[list].push(resolve));
+  const gate=list=>playlist=>new Promise((resolve,reject)=>globalThis.__requests[list].push({playlist,resolve,reject}));
   export const getTopPerformingVideos=gate('top'),getLatestVideos=gate('latest');
   export const downloadThumbnail=async()=>({});export const formatViewCount=String,formatDuration=String;`;
 const compiled = await build({entryPoints:['src/components/YouTubeChannelRef.tsx'],absWorkingDir:fileURLToPath(new URL('..',import.meta.url)),bundle:true,write:false,format:'esm',platform:'node',jsx:'automatic',logLevel:'silent',
@@ -47,17 +47,36 @@ const mount = props => {
 };
 const videos = (channel, count) => Array.from({ length: count }, (_, i) => ({ id: `${channel}${i}`, title: `${channel} video ${i}`, publishedAt: '2026-01-01', thumbnailUrl: '', viewCount: 1, likeCount: 0, duration: 60 }));
 
-test('a late Top Performing response for the previous channel never replaces the current list', async () => {
+const setup = async () => {
   globalThis.document = { addEventListener() {}, removeEventListener() {} };
   globalThis.window = { addEventListener() {}, removeEventListener() {}, innerWidth: 1200, innerHeight: 800 };
   globalThis.__requests = { top: [], latest: [] };
   const ui = mount({ onAddReferences() {}, onPrepareBrainstorm() {}, draftKey: 'k', remainingSlots: 14 });
   await ui.settle(); await ui.click('YT');
+  // Channel A starts Top Performing, then the user switches to channel B's Browse list.
   await ui.type('A'); await ui.click('Look up YouTube link'); await ui.click('Top Performing');
   await ui.click('Change'); await ui.type('B'); await ui.click('Look up YouTube link'); await ui.click('Browse & Pick');
-  globalThis.__requests.latest[0](videos('B', 3)); await ui.settle();
-  globalThis.__requests.top[0](videos('A', 10)); await ui.settle();
+  const [a] = globalThis.__requests.top, [b] = globalThis.__requests.latest;
+  assert.equal(a.playlist, 'UUA'); assert.equal(b.playlist, 'UUB');
+  return { ui, a, b };
+};
+
+test('a late Top Performing response for the previous channel never replaces the current list', async () => {
+  const { ui, a, b } = await setup();
+  b.resolve(videos('B', 3)); await ui.settle();
+  a.resolve(videos('A', 10)); await ui.settle();
+  assert.match(ui.text(), /Channel B/);
   assert.match(ui.text(), /B video/);
   assert.doesNotMatch(ui.text(), /A video/);
   assert.match(ui.text(), /\b0\/10 selected/);
+});
+
+test('a late failure for the previous channel neither ends loading nor shows its error', async () => {
+  const { ui, a, b } = await setup();
+  a.reject(new Error('A failed')); await ui.settle();
+  assert.match(ui.text(), /Loading videos/);
+  assert.doesNotMatch(ui.text(), /A failed/);
+  b.reject(new Error('B failed')); await ui.settle();
+  assert.match(ui.text(), /B failed/);
+  assert.doesNotMatch(ui.text(), /A failed/);
 });
