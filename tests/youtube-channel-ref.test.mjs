@@ -82,15 +82,33 @@ test('a late failure for the previous channel neither ends loading nor shows its
   assert.doesNotMatch(ui.text(), /A failed/);
 });
 
-test('a late Browse response or failure for the previous channel leaves the current Top Performing list alone', async () => {
+test('a late Browse success for the previous channel leaves the current Top Performing list alone', async () => {
   const { ui, a, b } = await setup('latest', 'top');
-  a.reject(new Error('A failed')); await ui.settle();
-  assert.match(ui.text(), /Finding top performing videos/);
   b.resolve(videos('B', 3)); await ui.settle();
   const shown = ui.text();
   a.resolve(videos('A', 10)); await ui.settle();
   assert.equal(ui.text(), shown);
   assert.match(shown, /Channel B/);
   assert.match(shown, /B video/);
-  assert.doesNotMatch(shown, /A video|A failed/);
+  assert.doesNotMatch(shown, /A video/);
+});
+
+test('a late Browse failure for the previous channel neither ends loading nor shows its error', async () => {
+  const { ui, a, b } = await setup('latest', 'top');
+  a.reject(new Error('A failed')); await ui.settle();
+  assert.match(ui.text(), /Finding top performing videos/);
+  assert.doesNotMatch(ui.text(), /A failed/);
+  b.resolve(videos('B', 3)); await ui.settle();
+  assert.match(ui.text(), /B video/);
+  assert.doesNotMatch(ui.text(), /A failed/);
+});
+
+test('a Browse failure for the previous channel after the current list arrived shows no error', async () => {
+  // An empty list is where a stray error would be rendered.
+  const { ui, a, b } = await setup('latest', 'top');
+  b.resolve(videos('B', 0)); await ui.settle();
+  const shown = ui.text();
+  a.reject(new Error('A failed')); await ui.settle();
+  assert.equal(ui.text(), shown);
+  assert.doesNotMatch(ui.text(), /A failed/);
 });
