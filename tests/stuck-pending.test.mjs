@@ -21,3 +21,8 @@ test('cards that never received a provider handle are still failed after the lim
   assert.equal(isStuckPendingMedia({ id: 'v', mediaType: 'video', status: 'pending', createdAt: old, taskId: 't' }, now), false);
   assert.equal(isStuckPendingMedia(image({ createdAt: now - 1000 }), now), false);
 });
+
+test('a video still being submitted in this tab is not failed; a reloaded one without a task ID is', () => {
+  assert.equal(isStuckPendingMedia({ id: 'v', mediaType: 'video', status: 'pending', createdAt: old, videoStage: 'generating', isLoading: true }, now), false);
+  assert.equal(isStuckPendingMedia({ id: 'r', mediaType: 'video', status: 'pending', createdAt: old }, now), true);
+});
