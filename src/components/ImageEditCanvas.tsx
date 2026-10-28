@@ -195,7 +195,8 @@ export const ImageEditCanvas: React.FC<ImageEditCanvasProps> = ({ source, region
             // The edge limit is applied last: a minimum size must never push a layer past the image.
             // A saved layer can sit exactly on the edge (no room at all): keep its size.
             const available = 1 - (horizontal ? next.x : next.y);
-            if (available > 0) next[key] = Math.min(available, Math.max(.005, next[key] + delta));
+            // Shrinking never grows a sliver below the minimum; growing respects the minimum and the edge.
+            if (available > 0) next[key] = delta < 0 ? Math.min(next[key], Math.max(.005, next[key] + delta)) : Math.min(available, Math.max(.005, next[key] + delta));
           } else {
             const key = horizontal ? 'x' : 'y';
             next[key] = Math.max(0, Math.min(1 - (horizontal ? next.width : next.height), next[key] + delta));
