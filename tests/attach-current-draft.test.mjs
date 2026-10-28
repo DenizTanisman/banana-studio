@@ -5,11 +5,11 @@ import { transformSync } from 'esbuild';
 // Runs the exact Controls attach handlers. onChange behaves like React setState:
 // a functional update sees the latest draft, so file reads that await must use one.
 const src = readFileSync(new URL('../src/components/Controls.tsx', import.meta.url), 'utf8');
-const audio = src.slice(src.indexOf('  const handleAudioFileUpload = async'), src.indexOf('\n  };', src.indexOf('  const handleAudioFileUpload = async')) + 5);
+const audio = src.slice(src.indexOf('  const processAudioFiles = async'), src.indexOf('\n  };', src.indexOf('  const handleAudioFileUpload = async')) + 5);
 const pif = src.slice(src.indexOf('  const processImageFiles = async'), src.indexOf('  // --- Upload Handlers ---'));
 const ds = src.indexOf('    // 1. Handle Desktop Files', src.indexOf('  const handleDrop = async'));
 const drop = src.slice(ds, src.indexOf('    // 2. Handle Gallery Drops', ds));
-const code = transformSync(`module.exports = env => { let { config, onChange, setAttachmentError, maxReferenceImages, maxReferenceVideos, maxReferenceAudios, isH3VideoConfig, readFileAsBase64, getMimeType, estimateBase64Size, compressImage, processVideoFiles, readAudioDuration, URL, audioInputRef, attachLimitsRef } = env;
+const code = transformSync(`module.exports = env => { let { config, onChange, setAttachmentError, maxReferenceImages, maxReferenceVideos, maxReferenceAudios, isH3VideoConfig, readFileAsBase64, getMimeType, estimateBase64Size, compressImage, processVideoFiles, readAudioDuration, URL, audioInputRef, attachLimitsRef, uploadingReferenceVideos, addAttachmentError } = env;
   ${audio}
   ${pif}
   return { processImageFiles, handleAudioFileUpload, drop: async e => { ${drop} } }; };`, { loader: 'ts', format: 'cjs' }).code;
@@ -22,7 +22,7 @@ const setup = (start, gate, max = 14, failRead) => {
     maxReferenceImages: max, maxReferenceVideos: 3, maxReferenceAudios: 3, isH3VideoConfig: false,
     readFileAsBase64: async f => { if (gate) await gate; if (failRead?.(f)) throw new Error('read failed'); return 'data:' + f.name; }, getMimeType: f => f.type, estimateBase64Size: () => 10, compressImage: async d => d,
     processVideoFiles: async files => { env.onChange(prev => ({ ...prev, referenceVideos: [...(prev.referenceVideos || []), ...files.map(f => ({ id: f.name }))], mode: 'video' })); },
-    readAudioDuration: async () => { if (gate) await gate; return 3; }, audioInputRef: { current: null }, URL: { createObjectURL: f => 'blob:' + f.name },
+    readAudioDuration: async () => { if (gate) await gate; return 3; }, audioInputRef: { current: null }, uploadingReferenceVideos: 0, addAttachmentError: e => errors.push(e), URL: { createObjectURL: f => 'blob:' + f.name },
     attachLimitsRef: { get current() { return { ...limits, config: state }; } } };
   const mod = { exports: {} }; new Function('module', code)(mod);
   return { api: mod.exports(env), env, limits, errors, get: () => state };
@@ -76,6 +76,12 @@ test('overlapping audio uploads never exceed the audio limit', async () => {
   assert.deepEqual(t.get().referenceAudios.map(a => a.name), ['a.mp3', 'b.mp3', 'c.mp3']);
 });
 
+test('a model change while audio durations are read applies the new, lower audio limit', async () => {
+  const g = gated(); const t = setup(base, g.gate);
+  const pending = t.api.handleAudioFileUpload({ target: { files: ['a.mp3', 'b.mp3', 'c.mp3'].map(n => file(n, 'audio/mpeg')) } });
+  t.limits.audios = 1; g.release(); await pending;
+  assert.deepEqual(t.get().referenceAudios.map(a => a.name), ['a.mp3']);
+});
 test('a failed read leaves the draft unchanged and a retry adds the image exactly once', async () => {
   let fail = true; const t = setup(base, null, 14, () => fail);
   await assert.rejects(t.api.processImageFiles([file('x.png', 'image/png')]), /read failed/);
