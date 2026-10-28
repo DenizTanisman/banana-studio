@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   BookOpen,
@@ -128,7 +128,8 @@ export const HelpCenter: React.FC<HelpCenterProps> = ({ open, onClose }) => {
   const [activeSection, setActiveSection] = useState<HelpSectionId>('start');
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   // Callers pass inline handlers; a parent re-render must not re-run the focus effect.
-  const closeRef = useRef(onClose); closeRef.current = onClose;
+  const closeRef = useRef(onClose);
+  useLayoutEffect(() => { closeRef.current = onClose; }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
