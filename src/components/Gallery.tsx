@@ -1095,11 +1095,15 @@ export const Gallery: React.FC<GalleryProps> = ({
     // each render of more items, a column change and a window resize.
     handleScroll();
     window.addEventListener('resize', handleScroll);
+    // Content that grows or shrinks later (another folder, loaded cards) changes whether it fills the view.
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(handleScroll);
+    Array.from(container.children).forEach(child => resize?.observe(child));
     return () => {
       container.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
+      resize?.disconnect();
     };
-  }, [hasMoreImages, allVisibleImages.length, displayCount, gridCols]);
+  }, [hasMoreImages, allVisibleImages, displayCount, gridCols]);
 
   useEffect(() => {
     setComparisonIds(null);
