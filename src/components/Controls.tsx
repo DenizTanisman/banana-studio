@@ -723,7 +723,12 @@ export const Controls: React.FC<ControlsProps> = ({
       }
 
       if (newImages.length > 0) {
-        onChange({ ...config, referenceImages: [...currentImages, ...newImages] });
+        // Merge into the latest draft: reading/compressing the files awaited,
+        // and edits or other attachments may have landed meanwhile.
+        onChange(prev => {
+          const refs = prev.referenceImages || [];
+          return { ...prev, referenceImages: [...refs, ...newImages.slice(0, Math.max(0, MAX_IMAGES - refs.length))] };
+        });
       }
   };
 
@@ -812,10 +817,10 @@ export const Controls: React.FC<ControlsProps> = ({
       };
     }));
     if (newRefs.length > 0) {
-      onChange({
-        ...config,
-        referenceAudios: [...(config.referenceAudios || []), ...newRefs],
-      });
+      onChange(prev => ({
+        ...prev,
+        referenceAudios: [...(prev.referenceAudios || []), ...newRefs],
+      }));
     }
     if (audioInputRef.current) audioInputRef.current.value = '';
   };
@@ -1395,11 +1400,12 @@ export const Controls: React.FC<ControlsProps> = ({
                           duration: await readAudioDuration(url),
                         };
                     }));
-                    onChange({
-                        ...config,
-                        referenceAudios: [...(config.referenceAudios || []), ...newRefs],
+                    // Images and videos from this same drop were added just before.
+                    onChange(prev => ({
+                        ...prev,
+                        referenceAudios: [...(prev.referenceAudios || []), ...newRefs],
                         mode: 'video',
-                    });
+                    }));
                 }
             }
         }
