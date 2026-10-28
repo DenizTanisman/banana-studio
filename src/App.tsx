@@ -1594,6 +1594,8 @@ const AuthorizedWorkspace: React.FC<{
       }
 
       const response = await fetch(media.url);
+      // An expired link returns an error page; never add that as an image.
+      if (!response.ok) throw new Error(`Reference download failed (${response.status})`);
       const blob = await response.blob();
 
       const reader = new FileReader();

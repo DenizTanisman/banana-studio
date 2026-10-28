@@ -1180,6 +1180,7 @@ export const Controls: React.FC<ControlsProps> = ({
         const media = JSON.parse(mediaData);
         // Fetch the image and convert to base64
         const response = await fetch(media.url);
+        if (!response.ok) throw new Error(`Gallery image download failed (${response.status})`);
         const blob = await response.blob();
         const reader = new FileReader();
         reader.onload = async () => {
@@ -1432,6 +1433,7 @@ export const Controls: React.FC<ControlsProps> = ({
               return;
             }
             const response = await fetch(media.url);
+            if (!response.ok) throw new Error(`Gallery image download failed (${response.status})`);
             const blob = await response.blob();
             await processImageFiles([blob]);
         } catch (error) {
