@@ -1097,7 +1097,7 @@ export const Gallery: React.FC<GalleryProps> = ({
     window.addEventListener('resize', handleScroll);
     // Content that grows or shrinks later (another folder, loaded cards) changes whether it fills the view.
     const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(handleScroll);
-    Array.from(container.children).forEach(child => resize?.observe(child));
+    for (const child of Array.from(container.children) as Element[]) resize?.observe(child);
     return () => {
       container.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
