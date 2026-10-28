@@ -784,8 +784,12 @@ export const Controls: React.FC<ControlsProps> = ({
     }
     const MAX_VIDEOS = maxReferenceVideos;
     const current = config.referenceVideos?.length || 0;
-    const files = (Array.from(e.target.files) as File[]).slice(0, MAX_VIDEOS - current);
+    // A model switch can leave more inputs than the new limit; never slice with a negative end.
+    const room = Math.max(0, MAX_VIDEOS - current);
+    const files = (Array.from(e.target.files) as File[]).slice(0, room);
     await processVideoFiles(files);
+    // After processing, which clears earlier attachment errors.
+    if (e.target.files.length > room) setAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
@@ -799,7 +803,9 @@ export const Controls: React.FC<ControlsProps> = ({
     }
     const MAX_AUDIOS = maxReferenceAudios;
     const current = config.referenceAudios?.length || 0;
-    const files = (Array.from(e.target.files) as File[]).slice(0, MAX_AUDIOS - current);
+    const room = Math.max(0, MAX_AUDIOS - current);
+    if (e.target.files.length > room) setAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
+    const files = (Array.from(e.target.files) as File[]).slice(0, room);
     const newRefs = await Promise.all(files.map(async file => {
       const url = URL.createObjectURL(file);
       return {
@@ -1369,10 +1375,12 @@ export const Controls: React.FC<ControlsProps> = ({
             } else {
                 const MAX_VIDEOS = maxReferenceVideos;
                 const current = config.referenceVideos?.length || 0;
-                const toAdd = videoFiles.slice(0, MAX_VIDEOS - current);
+                const room = Math.max(0, MAX_VIDEOS - current);
+                const toAdd = videoFiles.slice(0, room);
                 if (toAdd.length > 0) {
                     await processVideoFiles(toAdd, true);
                 }
+                if (videoFiles.length > room) setAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
             }
         }
 
@@ -1382,7 +1390,9 @@ export const Controls: React.FC<ControlsProps> = ({
             } else {
                 const MAX_AUDIOS = maxReferenceAudios;
                 const current = config.referenceAudios?.length || 0;
-                const toAdd = audioFiles.slice(0, MAX_AUDIOS - current);
+                const room = Math.max(0, MAX_AUDIOS - current);
+                if (audioFiles.length > room) setAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
+                const toAdd = audioFiles.slice(0, room);
                 if (toAdd.length > 0) {
                     const newRefs = await Promise.all(toAdd.map(async f => {
                         const url = URL.createObjectURL(f);
