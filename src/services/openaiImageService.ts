@@ -163,7 +163,8 @@ export const generateOpenAIImage = async (
       const data = await response.json().catch(() => null);
       await assertImageSession(owner);
       if (response.status === 202 && data?.durable === true && data.id === id) return pending;
-      if ((!data && response.status >= 500) || data?.code === 'QUEUE_STATE_UNKNOWN' || (response.status === 409 && data?.code === 'GENERATION_EXISTS')) return pending;
+      // A 202 whose body could not be read (e.g. the timeout fired mid-body) was still accepted.
+      if ((!data && (response.status === 202 || response.status >= 500)) || data?.code === 'QUEUE_STATE_UNKNOWN' || (response.status === 409 && data?.code === 'GENERATION_EXISTS')) return pending;
       throw new Error(data?.error || `Image queue request failed (${response.status}). Check the gallery before submitting again.`);
     }, () => context?.onStage?.('preparing'));
     context?.onStage?.('queued');
