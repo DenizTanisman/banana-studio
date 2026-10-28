@@ -67,6 +67,7 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Browse search filter
   const [browseSearch, setBrowseSearch] = useState('');
@@ -192,6 +193,7 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     setSelectedIds(new Set());
     setMode('input');
     setError(null);
+    setDownloadError(null);
     setVideoInfo(null);
     setPreparedVideo(null);
     setBrowseSearch('');
@@ -356,9 +358,11 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
 
     setIsDownloading(true);
     setDownloadProgress(0);
+    setDownloadError(null);
 
     const selected = videos.filter((v) => selectedIds.has(v.id));
     const results: ReferenceImage[] = [];
+    const failed: string[] = [];
     let done = 0;
 
     for (const video of selected) {
@@ -372,6 +376,7 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
         });
       } catch (err) {
         console.warn(`Failed to download thumbnail for ${video.id}`, err);
+        failed.push(video.id);
       }
       done++;
       setDownloadProgress(Math.round((done / selected.length) * 100));
@@ -382,6 +387,12 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     }
 
     setIsDownloading(false);
+    if (failed.length > 0) {
+      // Keep the dialog open with only the failed videos selected, so they can be retried.
+      setSelectedIds(new Set(failed));
+      setDownloadError(`${failed.length} of ${selected.length} thumbnail${selected.length !== 1 ? 's' : ''} could not be downloaded. Try again.`);
+      return;
+    }
     setIsOpen(false);
     reset();
   };
@@ -725,6 +736,7 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
 
                     {/* Confirm Button */}
                     <div className="p-3 border-t border-gray-800">
+                      {downloadError && !isDownloading && <p role="alert" className="text-xs text-red-400 mb-2">{downloadError}</p>}
                       {isDownloading ? (
                         <div className="space-y-2">
                           <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
