@@ -31,9 +31,11 @@ export const prepareEditableImagePrompt = (prompt: string, references: Reference
     const items = [...mention.matchAll(/(\d+)(?:\s*(?:to|through|[–-])\s*(?:images?\s*)?(\d+))?/gi)];
     const gaps = items.map((item, index) => index ? mention.slice(items[index - 1].index! + items[index - 1][0].length, item.index) : '');
     const conjunction = (gap: string) => /\bor\b/i.test(gap) ? ' or ' : /\band\b|&/i.test(gap) ? ' and ' : null;
-    // One backward pass: a bare comma inherits the next explicit conjunction.
-    const joiners: string[] = new Array(gaps.length);
-    for (let index = gaps.length - 1, next = ' and '; index >= 0; index--) next = joiners[index] = conjunction(gaps[index]) || next;
+    // A bare comma inherits the next explicit conjunction (one backward pass);
+    // trailing commas with none after them keep the previous one.
+    const joiners: (string | null)[] = new Array(gaps.length);
+    for (let index = gaps.length - 1, next: string | null = null; index >= 0; index--) next = joiners[index] = conjunction(gaps[index]) || next;
+    for (let index = 0, previous = ' and '; index < gaps.length; index++) previous = joiners[index] = joiners[index] || previous;
     let seen = new Set<string>();
     let result = '';
     for (const [index, item] of items.entries()) {

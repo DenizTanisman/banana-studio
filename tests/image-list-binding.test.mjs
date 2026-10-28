@@ -25,6 +25,7 @@ test('ranges expand inside longer lists and mixed conjunctions keep their meanin
   assert.equal(prepareEditableImagePrompt('from images 1 to 3 to image 4', refs), `from ${T('a')} and ${T('b')} and ${T('c')} to ${T('d')}`);
   assert.equal(prepareEditableImagePrompt('images 1, 2, or 3 and 4', refs), `${T('a')} or ${T('b')} or ${T('c')} and ${T('d')}`);
   assert.equal(prepareEditableImagePrompt('images 1 and 2 or 2 and 3', refs), `${T('a')} and ${T('b')} or ${T('b')} and ${T('c')}`);
+  assert.equal(prepareEditableImagePrompt('images 1 or 2, 3', refs), `${T('a')} or ${T('b')} or ${T('c')}`);
 });
 
 test('a donor list before "to image N" binds every donor and keeps the destination', () => {
