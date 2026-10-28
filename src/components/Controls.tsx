@@ -1182,6 +1182,7 @@ export const Controls: React.FC<ControlsProps> = ({
         const response = await fetch(media.url);
         if (!response.ok) throw new Error(`Gallery image download failed (${response.status})`);
         const blob = await response.blob();
+        if (!blob.size || /^(?:text\/|application\/json)/i.test(blob.type)) throw new Error('Gallery image download did not return an image.');
         const reader = new FileReader();
         reader.onload = async () => {
           const base64 = reader.result as string;
@@ -1435,6 +1436,7 @@ export const Controls: React.FC<ControlsProps> = ({
             const response = await fetch(media.url);
             if (!response.ok) throw new Error(`Gallery image download failed (${response.status})`);
             const blob = await response.blob();
+            if (!blob.size || /^(?:text\/|application\/json)/i.test(blob.type)) throw new Error('Gallery image download did not return an image.');
             await processImageFiles([blob]);
         } catch (error) {
             console.error("Failed to process dropped gallery item", error);
