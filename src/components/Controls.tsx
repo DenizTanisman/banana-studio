@@ -775,6 +775,9 @@ export const Controls: React.FC<ControlsProps> = ({
     }
   };
 
+  // Several attachment problems in one action are all shown.
+  const addAttachmentError = (message: string) => setAttachmentError(previous => previous ? `${previous} ${message}` : message);
+
   const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     if (isH3VideoConfig && maxReferenceVideos === 0) {
@@ -786,10 +789,10 @@ export const Controls: React.FC<ControlsProps> = ({
     const current = config.referenceVideos?.length || 0;
     // A model switch can leave more inputs than the new limit; never slice with a negative end.
     const room = Math.max(0, MAX_VIDEOS - current);
-    const files = (Array.from(e.target.files) as File[]).slice(0, room);
-    await processVideoFiles(files);
-    // After processing, which clears earlier attachment errors.
-    if (e.target.files.length > room) setAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
+    const picked = Array.from(e.target.files) as File[];
+    await processVideoFiles(picked.slice(0, room));
+    // After processing (which clears earlier errors), keeping any upload error it reported.
+    if (picked.length > room) addAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
@@ -804,7 +807,7 @@ export const Controls: React.FC<ControlsProps> = ({
     const MAX_AUDIOS = maxReferenceAudios;
     const current = config.referenceAudios?.length || 0;
     const room = Math.max(0, MAX_AUDIOS - current);
-    if (e.target.files.length > room) setAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
+    if (e.target.files.length > room) addAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
     const files = (Array.from(e.target.files) as File[]).slice(0, room);
     const newRefs = await Promise.all(files.map(async file => {
       const url = URL.createObjectURL(file);
@@ -1380,7 +1383,7 @@ export const Controls: React.FC<ControlsProps> = ({
                 if (toAdd.length > 0) {
                     await processVideoFiles(toAdd, true);
                 }
-                if (videoFiles.length > room) setAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
+                if (videoFiles.length > room) addAttachmentError(`Limit reached: ${MAX_VIDEOS} videos max.`);
             }
         }
 
@@ -1391,7 +1394,7 @@ export const Controls: React.FC<ControlsProps> = ({
                 const MAX_AUDIOS = maxReferenceAudios;
                 const current = config.referenceAudios?.length || 0;
                 const room = Math.max(0, MAX_AUDIOS - current);
-                if (audioFiles.length > room) setAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
+                if (audioFiles.length > room) addAttachmentError(`Limit reached: ${MAX_AUDIOS} audio clips max.`);
                 const toAdd = audioFiles.slice(0, room);
                 if (toAdd.length > 0) {
                     const newRefs = await Promise.all(toAdd.map(async f => {
