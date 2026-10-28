@@ -94,16 +94,28 @@ test('JSON metadata compare-and-swap matches by value like PostgREST jsonb and r
 test('like SQL, a removed generation is never dispatched and a finished job never changes again',()=>{
   const f=fixture();try {
     const enqueue=id=>f.store.workerRpc('enqueue_image_job',{p_id:id,p_payload:{prompt:'Synthetic test',displayPrompt:'Synthetic test',referenceImages:[]},p_metadata:{}});
-    enqueue('removed');
-    f.store.execute({table:'generations',operation:'delete',filters:[{column:'id',operator:'eq',value:'removed'}]},false);
-    assert.equal(f.store.workerRpc('claim_image_job',{p_id:'removed',p_claim:'claim-r'}).action,'stop');
-    assert.equal(f.store.workerRpc('dispatch_image_job',{p_id:'removed',p_claim:'claim-r'}),false);
-    enqueue('done');
-    assert.equal(f.store.workerRpc('claim_image_job',{p_id:'done',p_claim:'claim-d'}).action,'prepare');
-    assert.equal(f.store.workerRpc('dispatch_image_job',{p_id:'done',p_claim:'claim-d'}),true);
-    assert.equal(f.store.workerRpc('finish_image_job',{p_id:'done',p_claim:'claim-d',p_success:true,p_storage_path:'u/done.png'}),true);
-    assert.equal(f.store.workerRpc('finish_image_job',{p_id:'done',p_claim:'claim-d',p_success:false,p_error:'late failure'}),false);
-    assert.equal(f.store.job('done').state,'completed');
-    assert.equal(f.store.get('generations','done').status,'completed');
+    const remove=id=>f.store.execute({table:'generations',operation:'delete',filters:[{column:'id',operator:'eq',value:id}]},false);
+    // Removed before the claim: the claim stops and fails the job.
+    enqueue('before');remove('before');
+    assert.equal(f.store.workerRpc('claim_image_job',{p_id:'before',p_claim:'c1'}).action,'stop');
+    assert.equal(f.store.job('before').state,'failed');
+    // Removed between claim and dispatch: the dispatch guard refuses it.
+    enqueue('between');
+    assert.equal(f.store.workerRpc('claim_image_job',{p_id:'between',p_claim:'c2'}).action,'prepare');
+    remove('between');
+    assert.equal(f.store.workerRpc('dispatch_image_job',{p_id:'between',p_claim:'c2'}),false);
+    // Removed after dispatch: the job is still observed, as in SQL.
+    enqueue('after');f.store.workerRpc('claim_image_job',{p_id:'after',p_claim:'c3'});
+    assert.equal(f.store.workerRpc('dispatch_image_job',{p_id:'after',p_claim:'c3'}),true);
+    remove('after');
+    assert.equal(f.store.workerRpc('claim_image_job',{p_id:'after',p_claim:'c4'}).action,'observe');
+    // A failure never downgrades a completed row, even while the job is not terminal yet.
+    enqueue('row');f.store.workerRpc('claim_image_job',{p_id:'row',p_claim:'c5'});f.store.workerRpc('dispatch_image_job',{p_id:'row',p_claim:'c5'});
+    f.store.execute({table:'generations',operation:'update',value:{status:'completed'},filters:[{column:'id',operator:'eq',value:'row'}]},false);
+    assert.equal(f.store.workerRpc('finish_image_job',{p_id:'row',p_claim:'c5',p_success:false,p_error:'late failure'}),true);
+    assert.equal(f.store.get('generations','row').status,'completed');
+    // A finished job never changes again.
+    assert.equal(f.store.workerRpc('finish_image_job',{p_id:'row',p_claim:'c5',p_success:true}),false);
+    assert.equal(f.store.job('row').state,'failed');
   }finally{f.store.close();f.cleanup();}
 });

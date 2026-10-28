@@ -144,9 +144,9 @@ export class LocalWorkspace {
     const job=this.job(a.p_id);if(!job)return name==='claim_image_job'?{action:'stop'}:false;
     if(name==='claim_image_job') {
       if(['completed','failed'].includes(job.state))return {action:'stop'};
-      // As in SQL: a removed generation is never sent to the provider.
-      if(!this.get('generations',job.id)){job.state='failed';this.job(job.id,job);return {action:'stop'};}
       if(job.dispatchedAt)return {action:'observe',claim:job.claim,audit:job.audit,dispatchedAt:job.dispatchedAt};
+      // As in SQL (after observe): a removed generation is never sent to the provider.
+      if(!this.get('generations',job.id)){job.state='failed';this.job(job.id,job);return {action:'stop'};}
       if(job.state==='preparing'&&job.claimedAt>Date.now()-60_000)return {action:'wait',retryAfter:5};
       if(job.retryAt>Date.now())return {action:'wait',retryAfter:Math.ceil((job.retryAt-Date.now())/1000)};
       job.claim=a.p_claim;job.claimedAt=Date.now();job.audit=randomUUID();job.state='preparing';this.db.prepare('INSERT INTO ledger VALUES (?,?)').run(job.audit,JSON.stringify({id:job.audit,generationId:job.id,kind:'image',state:'accepted',at:Date.now()}));this.job(job.id,job);return {action:'prepare',payload:this.materialize(job.payload),audit:job.audit,claim:job.claim};
