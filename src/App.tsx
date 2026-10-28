@@ -1550,7 +1550,7 @@ const AuthorizedWorkspace: React.FC<{
         // Like a batch image: keep the failed card. A server-queued job already
         // has a saved failed row that would otherwise reappear after reload.
         setGeneratedMedia(prev => prev.map(item => item.id === placeholder.id
-          ? { ...item, isLoading: false, url: '', status: 'failed', error: (error as any)?.message || message, imageProgress: undefined }
+          ? { ...item, isLoading: false, url: '', status: 'failed', error: (error as any)?.message || message, imageProgress: undefined, imageStage: undefined }
           : item));
         toast.dismissToast(toastId);
         toast.error(title, message);
