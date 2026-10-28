@@ -491,12 +491,15 @@ export const addAuthorizedEmail = async (email: string): Promise<void> => {
 };
 
 export const removeAuthorizedEmail = async (id: string): Promise<void> => {
-  const { error } = await supabase
+  // RLS turns a disallowed delete into a successful delete of zero rows.
+  const { data, error } = await supabase
     .from('authorized_emails')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
 
   if (error) throw error;
+  if (!data?.length) throw new Error('This email still has access. Refresh the list; you may no longer be an admin.');
 };
 
 // Admin: Reset all usage logs (clears estimated costs and counts)
