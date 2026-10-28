@@ -1546,8 +1546,12 @@ const AuthorizedWorkspace: React.FC<{
         toast.success('Variation Generated!', variedPrompt.length > 60 ? variedPrompt.substring(0, 60) + '...' : variedPrompt);
       } catch (error: any) {
         console.error("Variation generation failed", error);
-        setGeneratedMedia(prev => prev.filter(item => item.id !== placeholder.id));
         const { title, message } = parseErrorMessage(error);
+        // Like a batch image: keep the failed card. A server-queued job already
+        // has a saved failed row that would otherwise reappear after reload.
+        setGeneratedMedia(prev => prev.map(item => item.id === placeholder.id
+          ? { ...item, isLoading: false, url: '', status: 'failed', error: (error as any)?.message || message, imageProgress: undefined }
+          : item));
         toast.dismissToast(toastId);
         toast.error(title, message);
       } finally {
