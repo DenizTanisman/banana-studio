@@ -360,7 +360,8 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     setDownloadProgress(0);
     setDownloadError(null);
 
-    const selected = videos.filter((v) => selectedIds.has(v.id));
+    // Preselected Top videos and retries can exceed the slots left in the draft.
+    const selected = videos.filter((v) => selectedIds.has(v.id)).slice(0, maxSelectable);
     const results: ReferenceImage[] = [];
     const failed: string[] = [];
     let done = 0;
