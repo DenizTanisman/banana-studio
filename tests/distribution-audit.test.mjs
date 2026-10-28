@@ -25,5 +25,7 @@ test('distribution audit catches GitHub tokens, fal keys and session JWTs but al
   assert.deepEqual(scan(`k='${['0123abcd-4567-89ab-cdef-0123456789ab', '0123456789abcdef0123456789abcdef'].join(':')}'`), ['artifact-credential']);
   assert.deepEqual(scan(`k='${jwt({ role: 'service_role' })}'`), ['artifact-session-or-api-jwt']);
   assert.deepEqual(scan(`k='${jwt({ sub: 'user-1', role: 'authenticated' })}'`), ['artifact-session-or-api-jwt']);
+  assert.deepEqual(scan(`k='${jwt({ sub: 'user-1' })}'`), ['artifact-session-or-api-jwt']);
+  assert.deepEqual(scan(`k='${jwt({ session_id: 'session-1' })}'`), ['artifact-session-or-api-jwt']);
   assert.deepEqual(scan(`k='${jwt({ role: 'anon' })}'`), []);
 });
