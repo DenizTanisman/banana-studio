@@ -2258,14 +2258,20 @@ export const getTemplates = async (): Promise<Template[]> => {
     try {
       const userId = await getCurrentUserId();
       if (!userId) return [];
-      const { data } = await supabase.from('templates').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('templates').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+      // A failed read is not "no templates".
+      if (error) throw new Error(`Templates could not be loaded: ${error.message}`);
       if (data) {
         return data.map((row: any) => ({
           id: row.id, name: row.name, config: { ...row.config, referenceImages: row.config?.referenceImages?.map(withoutLegacyMask) }, createdAt: row.created_at
         }));
       }
       return [];
-    } catch (e) { return []; }
+    } catch (e) {
+      // Signed out is "no templates"; any other failure is reported.
+      if (isAuthSessionMissingError(e)) return [];
+      throw e instanceof Error ? e : new Error('Templates could not be loaded.');
+    }
   }
   return [];
 };
