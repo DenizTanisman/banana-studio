@@ -3,6 +3,7 @@ import { withoutLegacyMask } from '../lib/references/referenceImages';
 import { normalizePromptPreparation } from '../lib/prompts/promptPreparation';
 import { createTaskDeadline, waitForTask } from '../lib/shared/asyncTask';
 import { GeneratedMedia, Template, Folder, SavedReferenceImage, SavedPerson, SavedPersonSummary, ReferenceVideo, ReferenceAudio, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, VideoModelId, VideoOperation, VideoQuality, estimateVideoCost, normalizeYouTubeSource } from '../types';
+import { isAuthSessionMissingError } from '@supabase/supabase-js';
 import { supabase, getCurrentUserId, SUPABASE_URL } from './authService';
 import { retryTransientRead } from '../lib/shared/transientRead';
 import { signMediaUrl } from '../lib/references/mediaAccess';
@@ -2358,7 +2359,7 @@ export const getReferenceGallery = async (): Promise<SavedReferenceImage[]> => {
       console.error('Supabase get reference gallery failed:', error);
       // A changed session shows an empty library; any other failure is not
       // "no saved references" and must reach the caller.
-      if (await getCurrentUserId().catch(() => null) !== userId) return [];
+      if (isAuthSessionMissingError(error) || await getCurrentUserId().catch(() => null) !== userId) return [];
       throw new Error('Saved references could not be loaded. Close and reopen Saved References to retry.');
     }
   }
