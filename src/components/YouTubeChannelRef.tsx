@@ -311,7 +311,8 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     try {
       const vids = await getTopPerformingVideos(channel.uploadsPlaylistId, 10);
       setVideos(vids);
-      setSelectedIds(new Set(vids.slice(0, maxSelectable).map((v) => v.id)));
+      // References may have been added while the list loaded; use the current capacity.
+      setSelectedIds(new Set(vids.slice(0, maxSelectableRef.current).map((v) => v.id)));
     } catch (err: any) {
       setError(err.message || 'Failed to load videos');
     } finally {
@@ -399,6 +400,12 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
   };
 
   const maxSelectable = Math.max(0, Math.min(10, remainingSlots));
+  const maxSelectableRef = useRef(maxSelectable);
+  maxSelectableRef.current = maxSelectable;
+  // Free slots can shrink while the dialog is open (paste, drop, a partial add).
+  useEffect(() => {
+    setSelectedIds(prev => prev.size > maxSelectable ? new Set([...prev].slice(0, maxSelectable)) : prev);
+  }, [maxSelectable]);
 
   return (
     <>
