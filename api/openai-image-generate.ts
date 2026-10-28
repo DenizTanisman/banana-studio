@@ -216,7 +216,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
     // deployment's response-size limit. No credential is sent to the browser.
     return res.status(200).json({ id: body.id, url, storagePath, referenceImages: safeRefs, metadata });
   } catch (error: any) {
-    const message = error?.name === 'TimeoutError'
+    const message = error?.name === 'TimeoutError' && provider !== 'codex'
       ? `${PROVIDER_LABELS[provider]} exceeded the request time limit. It may still have billed this request. Check usage before generating again.`
       : error instanceof SavedImageError ? error.message : provider === 'codex' ? String(error?.message || 'Codex could not finish the image.').slice(0, 600) : provider === 'openai' ? openAIErrorMessage(error?.status, providerErrorCode) : `${PROVIDER_LABELS[provider]} could not finish the image. Check provider usage before submitting again.`;
     console.warn('OpenAI image request failed', { id: body.id, auditId: guard.id, status: providerStatus ?? null,

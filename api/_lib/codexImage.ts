@@ -48,6 +48,19 @@ export const codexAvailable = (): boolean => {
   return value;
 };
 
+// Only what Codex needs to run and reach the network. Provider keys and server
+// secrets in this process's environment never reach the child, so Codex cannot
+// silently switch to an API key such as OPENAI_API_KEY.
+const ENV_ALLOWLIST = ['HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'CODEX_HOME',
+  'HTTPS_PROXY', 'HTTP_PROXY', 'NO_PROXY', 'https_proxy', 'http_proxy', 'no_proxy', 'SSL_CERT_FILE', 'SSL_CERT_DIR',
+  'SystemRoot', 'WINDIR', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'ProgramData', 'ProgramFiles', 'COMSPEC', 'PATHEXT'];
+export const codexEnvironment = (binary: string): NodeJS.ProcessEnv => {
+  const env: NodeJS.ProcessEnv = Object.fromEntries(ENV_ALLOWLIST.filter(name => process.env[name]).map(name => [name, process.env[name]]));
+  // npm installs `codex` as a Node script; the app's bundled Node satisfies its shebang.
+  env.PATH = [...new Set([path.dirname(binary), path.dirname(process.execPath), ...candidateDirectories()])].join(path.delimiter);
+  return env;
+};
+
 export const codexImagePrompt = (input: Record<string, any>, imageCount: number): string => {
   const canvas = typeof input.size === 'string' && /^\d+x\d+$/.test(input.size)
     ? `Canvas: ${input.size.replace('x', ' × ')} pixels, or the closest supported size with exactly the same aspect ratio.`
@@ -70,7 +83,7 @@ export const codexArguments = (imagePaths: string[], workingDirectory: string): 
 
 const runCodex = (binary: string, args: string[], prompt: string, signal?: AbortSignal) => new Promise<{ threadId: string; message: string }>((resolve, reject) => {
   // The prompt goes through stdin, never through a shell or the argument list.
-  const child = spawn(binary, args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+  const child = spawn(binary, args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: codexEnvironment(binary) });
   let threadId = '', message = '', failure = '', buffer = '', stderr = '';
   const stop = (error: Error) => { child.kill('SIGTERM'); reject(error); };
   const timer = setTimeout(() => stop(Object.assign(new Error('Codex did not finish the image in time.'), { name: 'TimeoutError' })), TIMEOUT_MS);
@@ -98,6 +111,7 @@ const runCodex = (binary: string, args: string[], prompt: string, signal?: Abort
     if (!/^[a-zA-Z0-9-]{1,128}$/.test(threadId)) return reject(new Error('Codex did not report a session.'));
     resolve({ threadId, message });
   });
+  child.stdin.on('error', () => { /* An early exit is reported by 'close'. */ });
   child.stdin.end(prompt);
 });
 
@@ -119,7 +133,8 @@ export async function requestCodexImage(input: Record<string, any>, imageData: (
     for (const [index, image] of (input.images || []).entries()) images.push(writeReference(directory, await imageData(image.image_url), index));
     const { threadId, message } = await runCodex(binary, codexArguments(images, directory), codexImagePrompt(input, images.length), signal);
     const outputDirectory = path.join(codexHome(), 'generated_images', threadId);
-    const files = fs.readdirSync(outputDirectory).filter(name => /\.(png|jpe?g|webp)$/i.test(name))
+    const names = fs.existsSync(outputDirectory) ? fs.readdirSync(outputDirectory) : [];
+    const files = names.filter(name => /\.(png|jpe?g|webp)$/i.test(name))
       .map(name => path.join(outputDirectory, name)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
     if (!files.length) return Response.json({ error: { message: `Codex finished without an image. ${message}`.trim() } }, { status: 502 });
     const bytes = fs.readFileSync(files[0]);

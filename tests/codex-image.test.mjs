@@ -19,7 +19,7 @@ const fs=require('node:fs'),path=require('node:path');let input='';
 process.stdin.on('data',c=>input+=c).on('end',()=>{
   const thread='thread-1',home=process.env.CODEX_HOME,images=[];
   for(let i=0;i<process.argv.length;i++)if(process.argv[i]==='--image')images.push(fs.readFileSync(process.argv[i+1]).toString('base64'));
-  fs.writeFileSync(path.join(home,'call.json'),JSON.stringify({args:process.argv.slice(2),input,images}));
+  fs.writeFileSync(path.join(home,'call.json'),JSON.stringify({args:process.argv.slice(2),input,images,secrets:['OPENAI_API_KEY','FAL_KEY','SUPABASE_SERVICE_ROLE_KEY'].filter(k=>k in process.env)}));
   console.log(JSON.stringify({type:'thread.started',thread_id:thread}));
   ${fail ? `console.log(JSON.stringify({type:'turn.failed',error:{message:'You have hit your usage limit.'}}));process.exit(1);` : `
   fs.mkdirSync(path.join(home,'generated_images',thread),{recursive:true});
@@ -63,7 +63,7 @@ test('a Codex image returns the API response shape and passes references as file
   try {
     const binary = fakeCodex(home);
     const reference = `data:image/png;base64,${PNG.toString('base64')}`;
-    const response = await withEnv({ CODEX_HOME: home, CODEX_BIN: binary }, () =>
+    const response = await withEnv({ CODEX_HOME: home, CODEX_BIN: binary, OPENAI_API_KEY: 'sk-test-only', FAL_KEY: 'fal-test-only', SUPABASE_SERVICE_ROLE_KEY: 'test-only' }, () =>
       requestCodexImage({ prompt: 'Edit Image 1', size: '1024x1024', images: [{ image_url: 'local-ref' }] }, async url => { assert.equal(url, 'local-ref'); return reference; }));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('x-request-id'), 'thread-1');
@@ -73,6 +73,8 @@ test('a Codex image returns the API response shape and passes references as file
     const call = JSON.parse(fs.readFileSync(path.join(home, 'call.json'), 'utf8'));
     assert.match(call.input, /Edit Image 1$/);
     assert.deepEqual(call.images, [PNG.toString('base64')]);
+    // Provider keys and server secrets never reach Codex, so it cannot bill an API key instead of the plan.
+    assert.deepEqual(call.secrets, []);
     // Temporary reference files are removed after the run.
     const work = call.args[call.args.indexOf('--cd') + 1];
     assert.equal(fs.existsSync(work), false);
