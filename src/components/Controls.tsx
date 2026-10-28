@@ -596,6 +596,9 @@ export const Controls: React.FC<ControlsProps> = ({
     : config.mode === 'video' && config.videoModel === 'seedance-2.5'
       ? (seedanceFrameOnly ? 2 : 30)
       : config.mode === 'image' && config.imageModel === SUNBURST_MODEL ? 16 : 14;
+  // Uploads finish after awaits; they use the limit of the latest committed draft.
+  const attachLimitsRef = useRef({ videos: maxReferenceVideos, config });
+  useLayoutEffect(() => { attachLimitsRef.current = { videos: maxReferenceVideos, config }; });
   const hasStaleEnhancedPrompt = h3PromptSupported && isEnhancedPromptStale(config);
 
   const formatVideoModel = (model?: VideoModelId) => model === 'seedance-2.0'
@@ -760,17 +763,20 @@ export const Controls: React.FC<ControlsProps> = ({
           : []
       );
 
+      const latest = attachLimitsRef.current;
       if (newRefs.length > 0) {
-        // Never exceed the limit, even if another selection finished first.
+        // Never exceed the latest limit (the operation may have changed while uploading),
+        // even if another selection finished first.
         onChange(previous => ({
           ...previous,
-          referenceVideos: [...(previous.referenceVideos || []), ...newRefs.slice(0, Math.max(0, maxReferenceVideos - (previous.referenceVideos?.length || 0)))],
+          referenceVideos: [...(previous.referenceVideos || []), ...newRefs.slice(0, Math.max(0, attachLimitsRef.current.videos - (previous.referenceVideos?.length || 0)))],
           ...(switchToVideo ? { mode: 'video' as const } : {}),
         }));
       }
       if (failures.length > 0) {
         setAttachmentError(failures.join('\n'));
       }
+      if (newRefs.length > Math.max(0, latest.videos - (latest.config.referenceVideos?.length || 0))) addAttachmentError(`Limit reached: ${latest.videos} videos max.`);
     } finally {
       setUploadingReferenceVideos(count => Math.max(0, count - files.length));
     }
