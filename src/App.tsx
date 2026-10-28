@@ -28,6 +28,7 @@ import { createRecreateConfig, mergeRecreateHydration } from './lib/gallery/recr
 import { validateImageGenerationReferences } from './lib/images/imagePrompting';
 import { prepareProtectedImageSource, finishProtectedImageEdit } from './services/imageEditService';
 import { getGalleryEditSourceId } from './lib/gallery/galleryEditJobs';
+import { isStuckPendingMedia } from './lib/gallery/stuckPending';
 import { mergeLoadedGalleryHistory } from './lib/gallery/galleryHistoryMerge';
 import { mergeReconciledGalleryCosts } from './lib/gallery/galleryBillingRefresh';
 import { createPromptPreparation } from './lib/prompts/promptPreparation';
@@ -344,34 +345,21 @@ const AuthorizedWorkspace: React.FC<{
   // or the user closed the tab mid-flight before the task_id was saved.
   useEffect(() => {
     if (!isAuthenticated) return;
-    const STUCK_PENDING_MS = 90_000;
     const interval = setInterval(() => {
       const now = Date.now();
       setGeneratedMedia(prev => {
         let changed = false;
         const next = prev.map(item => {
-          if (
-            item.status === 'pending' &&
-            now - item.createdAt > STUCK_PENDING_MS
-          ) {
-            // Video: needs a provider task_id to be resumable.
-            // Image (GPT Image 2): needs falRequestId from fal.ai.
-            const isVideo = item.mediaType === 'video';
-            const isImage = item.mediaType === 'image';
-            const stuck = (isVideo && (!item.taskId || item.taskId === ''))
-              || (isImage && item.imageModel !== SUNBURST_MODEL && !item.falRequestId);
-            if (stuck) {
-              changed = true;
-              const errMsg = 'Generation request did not start (timed out before a task ID was returned). You can remove this entry.';
-              if (isVideo) {
-                updateVideoStatus(item.id, 'failed', { metadata: { error: errMsg } }).catch(() => {});
-              } else if (isImage) {
-                updateImageStatus(item.id, 'failed', { metadata: { error: errMsg } }).catch(() => {});
-              }
-              return { ...item, isLoading: false, status: 'failed' as const, error: errMsg };
-            }
+          // Only cards that never received a provider handle are failed here.
+          if (!isStuckPendingMedia(item, now)) return item;
+          changed = true;
+          const errMsg = 'Generation request did not start (timed out before a task ID was returned). You can remove this entry.';
+          if (item.mediaType === 'video') {
+            updateVideoStatus(item.id, 'failed', { metadata: { error: errMsg } }).catch(() => {});
+          } else {
+            updateImageStatus(item.id, 'failed', { metadata: { error: errMsg } }).catch(() => {});
           }
-          return item;
+          return { ...item, isLoading: false, status: 'failed' as const, error: errMsg };
         });
         return changed ? next : prev;
       });
