@@ -1,6 +1,7 @@
 import { isLocalWorkspace } from './lib/config/runtimeConfig';
 import { WorkspaceBar } from './components/WorkspaceBar';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { Controls } from './components/Controls';
 import { Gallery } from './components/Gallery';
 import { HistoryPanel } from './components/HistoryPanel';
@@ -1561,21 +1562,20 @@ const AuthorizedWorkspace: React.FC<{
     }
   };
 
+  // The limit is checked against the latest config inside the updater. flushSync
+  // runs that pure updater now, so exactly one toast reports what happened.
   const handleUseAsReference = async (media: GeneratedMedia) => {
     try {
       if (media.mediaType === 'video') {
-        setConfig(prev => {
+        let limit = 0;
+        flushSync(() => setConfig(prev => {
           const MAX_VIDEOS = prev.videoModel === 'minimax-h3'
             ? prev.h3MaxMode&&prev.h3MaxMode!=='auto'?H3_MAX_CAPABILITIES[getH3MaxMode(prev)].videos.max:3
             : prev.videoModel === 'seedance-2.5'
             ? (prev.videoOperation === 'edit' || prev.videoOperation === 'extend' ? 1 : 10)
             : 3;
-          if ((prev.referenceVideos?.length || 0) >= MAX_VIDEOS) {
-            toast.warning('Limit Reached', `Maximum of ${MAX_VIDEOS} reference videos allowed for this operation.`);
-            return prev;
-          }
-          // Confirm only an addition that happened; the limit branch already warned.
-          toast.success('Video Reference Added', 'Video added as reference. Switched to video mode.');
+          limit = (prev.referenceVideos?.length || 0) >= MAX_VIDEOS ? MAX_VIDEOS : 0;
+          if (limit) return prev;
           return {
             ...prev,
             referenceVideos: [
@@ -1590,7 +1590,9 @@ const AuthorizedWorkspace: React.FC<{
             ],
             mode: 'video',
           };
-        });
+        }));
+        if (limit) toast.warning('Limit Reached', `Maximum of ${limit} reference videos allowed for this operation.`);
+        else toast.success('Video Reference Added', 'Video added as reference. Switched to video mode.');
         return;
       }
 
@@ -1601,16 +1603,14 @@ const AuthorizedWorkspace: React.FC<{
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
           const base64Data = reader.result;
+          let limit = 0;
 
-          setConfig(prev => {
+          flushSync(() => setConfig(prev => {
             const isH3Video = prev.mode === 'video' && prev.videoModel === 'minimax-h3';
             const MAX_IMAGES = isH3Video ? (prev.h3MaxMode&&prev.h3MaxMode!=='auto'?H3_MAX_CAPABILITIES[getH3MaxMode(prev)].images.max+(getH3MaxMode(prev)==='reference_to_video'?new Set([prev.h3MaxOptions?.startImageId,prev.h3MaxOptions?.middleImageId,prev.h3MaxOptions?.endImageId].filter(id=>id&&prev.referenceImages.some(ref=>ref.id===id))).size:0):9) : prev.mode === 'image' && prev.imageModel === SUNBURST_MODEL ? 16 : 14;
-            if ((prev.referenceImages?.length || 0) >= MAX_IMAGES) {
-              toast.warning('Limit Reached', `Maximum of ${MAX_IMAGES} reference images allowed for this action.`);
-              return prev;
-            }
+            limit = (prev.referenceImages?.length || 0) >= MAX_IMAGES ? MAX_IMAGES : 0;
+            if (limit) return prev;
 
-            toast.success('Reference Added', 'Image added as reference.');
             return {
               ...prev,
               referenceImages: [
@@ -1622,7 +1622,9 @@ const AuthorizedWorkspace: React.FC<{
                 }
               ]
             };
-          });
+          }));
+          if (limit) toast.warning('Limit Reached', `Maximum of ${limit} reference images allowed for this action.`);
+          else toast.success('Reference Added', 'Image added as reference.');
         }
       };
       reader.readAsDataURL(blob);
