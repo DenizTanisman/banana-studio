@@ -391,8 +391,11 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     setIsDownloading(false);
     if (failed.length > 0) {
       // Keep the dialog open with only the failed videos selected, so they can be retried.
-      setSelectedIds(new Set(failed));
-      setDownloadError(`${failed.length} of ${selected.length} thumbnail${selected.length !== 1 ? 's' : ''} could not be downloaded. Try again.`);
+      // Slots may have been used during the download: re-select only what still fits.
+      const retry = failed.slice(0, maxSelectableRef.current);
+      setSelectedIds(new Set(retry));
+      const summary = `${failed.length} of ${selected.length} thumbnail${selected.length !== 1 ? 's' : ''} could not be downloaded.`;
+      setDownloadError(retry.length ? `${summary} Try again.` : `${summary} No reference slots are free to retry.`);
       return;
     }
     setIsOpen(false);
