@@ -26,4 +26,7 @@ test('the browser secret guard ignores kebab-case names that contain "sk-"', () 
   const name = ['task', 'list', 'item', 'checkbox', 'container', 'wrapper', 'large'].join('-');
   assert.doesNotThrow(() => assertPublicEnvironment({ VITE_THEME: name }));
   assert.throws(() => assertPublicEnvironment({ VITE_THEME: ['sk', 'proj', 'A'.repeat(40)].join('-') }));
+  // Other key shapes keep matching even when glued to a word character.
+  assert.throws(() => assertPublicEnvironment({ VITE_THEME: 'x' + 'AIza' + 'A'.repeat(40) }));
+  assert.throws(() => assertPublicEnvironment({ VITE_THEME: 'x' + 'sb_secret_' + 'A'.repeat(24) }));
 });
