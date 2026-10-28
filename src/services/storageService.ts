@@ -2357,9 +2357,14 @@ export const getReferenceGallery = async (): Promise<SavedReferenceImage[]> => {
       return [];
     } catch (error) {
       console.error('Supabase get reference gallery failed:', error);
-      // A changed session shows an empty library; any other failure is not
-      // "no saved references" and must reach the caller.
-      if (isAuthSessionMissingError(error) || await getCurrentUserId().catch(() => null) !== userId) return [];
+      // Signed out, or a confirmed different user, shows an empty library. Any
+      // other failure (including a failed identity lookup) is not "no saved
+      // references" and must reach the caller.
+      if (isAuthSessionMissingError(error)) return [];
+      if (userId) {
+        const currentUserId = await getCurrentUserId().catch(currentError => isAuthSessionMissingError(currentError) ? null : userId);
+        if (currentUserId !== userId) return [];
+      }
       throw new Error('Saved references could not be loaded. Close and reopen Saved References to retry.');
     }
   }
