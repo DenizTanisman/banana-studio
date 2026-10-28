@@ -91,3 +91,19 @@ test('JSON metadata compare-and-swap matches by value like PostgREST jsonb and r
     assert.equal((await db.from('generations').select('id').eq('status','"failed"')).data.length,0);
   } finally{f.store.close();f.cleanup();}
 });
+test('like SQL, a removed generation is never dispatched and a finished job never changes again',()=>{
+  const f=fixture();try {
+    const enqueue=id=>f.store.workerRpc('enqueue_image_job',{p_id:id,p_payload:{prompt:'Synthetic test',displayPrompt:'Synthetic test',referenceImages:[]},p_metadata:{}});
+    enqueue('removed');
+    f.store.execute({table:'generations',operation:'delete',filters:[{column:'id',operator:'eq',value:'removed'}]},false);
+    assert.equal(f.store.workerRpc('claim_image_job',{p_id:'removed',p_claim:'claim-r'}).action,'stop');
+    assert.equal(f.store.workerRpc('dispatch_image_job',{p_id:'removed',p_claim:'claim-r'}),false);
+    enqueue('done');
+    assert.equal(f.store.workerRpc('claim_image_job',{p_id:'done',p_claim:'claim-d'}).action,'prepare');
+    assert.equal(f.store.workerRpc('dispatch_image_job',{p_id:'done',p_claim:'claim-d'}),true);
+    assert.equal(f.store.workerRpc('finish_image_job',{p_id:'done',p_claim:'claim-d',p_success:true,p_storage_path:'u/done.png'}),true);
+    assert.equal(f.store.workerRpc('finish_image_job',{p_id:'done',p_claim:'claim-d',p_success:false,p_error:'late failure'}),false);
+    assert.equal(f.store.job('done').state,'completed');
+    assert.equal(f.store.get('generations','done').status,'completed');
+  }finally{f.store.close();f.cleanup();}
+});
