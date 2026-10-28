@@ -79,8 +79,10 @@ export const getProfile = async (): Promise<UserProfile | null> => {
     .eq('id', user.id)
     .single();
 
-  if (error || !data) return null;
-  return data as UserProfile;
+  // No row is "no profile"; a failed read is not, and must not drop a role.
+  if (error?.code === 'PGRST116') return null;
+  if (error) throw new Error('Your profile could not be loaded.');
+  return (data as UserProfile) || null;
 };
 
 export const onAuthStateChange = (callback: (session: Session | null, event?: string) => void) => {
