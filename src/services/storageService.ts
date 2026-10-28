@@ -3,6 +3,7 @@ import { withoutLegacyMask } from '../lib/references/referenceImages';
 import { normalizePromptPreparation } from '../lib/prompts/promptPreparation';
 import { createTaskDeadline, waitForTask } from '../lib/shared/asyncTask';
 import { GeneratedMedia, Template, Folder, SavedReferenceImage, SavedPerson, SavedPersonSummary, ReferenceVideo, ReferenceAudio, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, VideoModelId, VideoOperation, VideoQuality, estimateVideoCost, normalizeYouTubeSource } from '../types';
+import { isAuthSessionMissingError } from '@supabase/supabase-js';
 import { supabase, getCurrentUserId, SUPABASE_URL } from './authService';
 import { retryTransientRead } from '../lib/shared/transientRead';
 import { signMediaUrl } from '../lib/references/mediaAccess';
@@ -2323,8 +2324,9 @@ export const saveReferenceImage = async (image: SavedReferenceImage): Promise<vo
 
 export const getReferenceGallery = async (): Promise<SavedReferenceImage[]> => {
   if (supabase) {
+    let userId: string | null = null;
     try {
-      const userId = await getCurrentUserId();
+      userId = await getCurrentUserId();
       if (!userId) return [];
       let query = supabase
         .from('reference_images')
@@ -2355,7 +2357,15 @@ export const getReferenceGallery = async (): Promise<SavedReferenceImage[]> => {
       return [];
     } catch (error) {
       console.error('Supabase get reference gallery failed:', error);
-      return [];
+      // Signed out, or a confirmed different user, shows an empty library. Any
+      // other failure (including a failed identity lookup) is not "no saved
+      // references" and must reach the caller.
+      if (isAuthSessionMissingError(error)) return [];
+      if (userId) {
+        const currentUserId = await getCurrentUserId().catch(currentError => isAuthSessionMissingError(currentError) ? null : userId);
+        if (currentUserId !== userId) return [];
+      }
+      throw new Error('Saved references could not be loaded. Close and reopen Saved References to retry.');
     }
   }
 

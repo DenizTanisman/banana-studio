@@ -478,6 +478,7 @@ export const Controls: React.FC<ControlsProps> = ({
 
   // Reference Gallery State
   const [refGallery, setRefGallery] = useState<SavedReferenceImage[]>([]);
+  const [refGalleryError, setRefGalleryError] = useState<string | null>(null);
   const [isRefGalleryOpen, setIsRefGalleryOpen] = useState(false);
   const [refGalleryTab, setRefGalleryTab] = useState<'images' | 'people'>('images');
   const [draggedRefId, setDraggedRefId] = useState<string | null>(null);
@@ -505,8 +506,13 @@ export const Controls: React.FC<ControlsProps> = ({
   useEffect(() => {
     let cancelled = false;
     const loadRefGallery = async () => {
-      const images = await getReferenceGallery();
-      if (!cancelled) setRefGallery(images);
+      try {
+        const images = await getReferenceGallery();
+        if (!cancelled) { setRefGallery(images); setRefGalleryError(null); }
+      } catch (error) {
+        // Keep the last loaded list: a failed refresh is not an empty library.
+        if (!cancelled) setRefGalleryError(error instanceof Error ? error.message : 'Saved references could not be loaded.');
+      }
     };
     void loadRefGallery();
     return () => { cancelled = true; };
@@ -2076,6 +2082,7 @@ export const Controls: React.FC<ControlsProps> = ({
                               <button type="button" role="tab" aria-selected={refGalleryTab === 'images'} onClick={() => setRefGalleryTab('images')} className={`flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs ${refGalleryTab === 'images' ? 'bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:bg-white/5'}`}><ImageIcon className="h-3.5 w-3.5" />Images <span className="text-[10px] opacity-60">{refGallery.length}</span></button>
                               <button type="button" role="tab" aria-selected={refGalleryTab === 'people'} onClick={() => setRefGalleryTab('people')} className={`flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs ${refGalleryTab === 'people' ? 'bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:bg-white/5'}`}><Users className="h-3.5 w-3.5" />People</button>
                             </div>
+                            {refGalleryError && <p role="alert" className="px-3 pt-2 text-[11px] text-red-400">{refGalleryError}</p>}
                             {refGalleryTab === 'people' ? <SavedPeople references={config.referenceImages} gallery={refGallery} draft={config}
                               addDisabled={isH3VideoConfig && h3State.mode !== 'reference_to_video' ? 'Choose Reference to Video Max to add a saved person, or attach individual photos for this action.' : !isH3VideoConfig && config.referenceImages.some(image => image.isFirstFrame || image.isLastFrame) ? 'Remove frame roles before adding people.' : undefined}
                               onAdd={person => onChange(addSavedPersonToDraft(config, person, maxReferenceImages))}
