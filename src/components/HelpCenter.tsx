@@ -127,6 +127,8 @@ const ModelCard: React.FC<{ name: string; badge: string; badgeTone: string; best
 export const HelpCenter: React.FC<HelpCenterProps> = ({ open, onClose }) => {
   const [activeSection, setActiveSection] = useState<HelpSectionId>('start');
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  // Callers pass inline handlers; a parent re-render must not re-run the focus effect.
+  const closeRef = useRef(onClose); closeRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -135,7 +137,7 @@ export const HelpCenter: React.FC<HelpCenterProps> = ({ open, onClose }) => {
     document.body.style.overflow = 'hidden';
     window.setTimeout(() => closeButtonRef.current?.focus(), 0);
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') closeRef.current();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -143,7 +145,7 @@ export const HelpCenter: React.FC<HelpCenterProps> = ({ open, onClose }) => {
       document.removeEventListener('keydown', handleKeyDown);
       previouslyFocused?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
