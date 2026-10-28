@@ -80,6 +80,8 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
   const [selectedPersonIds, setSelectedPersonIds] = useState<number[]>([]);
   const people = getPersonGroups(referenceImages.filter(ref => !ref.isVideoContext), personGroups).filter(group => group.images.length);
   const requestRef = useRef<AbortController | null>(null);
+  // Only the latest Top/Browse request may apply its list; reset() also invalidates it.
+  const listRequest = useRef(0);
   const previousDraftKey = useRef(draftKey);
 
   useEffect(() => () => requestRef.current?.abort(), []);
@@ -183,6 +185,7 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
   }, [isOpen]);
 
   const reset = () => {
+    listRequest.current += 1;
     requestRef.current?.abort();
     requestRef.current = null;
     setIsLoading(false);
@@ -305,15 +308,17 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     setError(null);
     setVideos([]);
     setSelectedIds(new Set());
+    const request = ++listRequest.current;
 
     try {
       const vids = await getTopPerformingVideos(channel.uploadsPlaylistId, 10);
+      if (listRequest.current !== request) return;
       setVideos(vids);
       setSelectedIds(new Set(vids.map((v) => v.id)));
     } catch (err: any) {
-      setError(err.message || 'Failed to load videos');
+      if (listRequest.current === request) setError(err.message || 'Failed to load videos');
     } finally {
-      setIsLoading(false);
+      if (listRequest.current === request) setIsLoading(false);
     }
   };
 
@@ -324,14 +329,16 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     setError(null);
     setVideos([]);
     setSelectedIds(new Set());
+    const request = ++listRequest.current;
 
     try {
       const vids = await getLatestVideos(channel.uploadsPlaylistId, 150);
+      if (listRequest.current !== request) return;
       setVideos(vids);
     } catch (err: any) {
-      setError(err.message || 'Failed to load videos');
+      if (listRequest.current === request) setError(err.message || 'Failed to load videos');
     } finally {
-      setIsLoading(false);
+      if (listRequest.current === request) setIsLoading(false);
     }
   };
 
