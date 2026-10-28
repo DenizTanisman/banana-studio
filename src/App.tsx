@@ -263,11 +263,16 @@ const AuthorizedWorkspace: React.FC<{
           }, (error) => {
             if (!cancelled) setGalleryHistoryError(error.message);
           }).finally(() => { if (!cancelled) setIsGalleryIndexLoading(false); }),
-          getTemplates(),
+          // Templates load separately: their failure must not block the gallery.
+          getTemplates().catch(error => {
+            console.error('Failed to load templates', error);
+            if (!cancelled) toast.error('Templates Unavailable', 'Saved templates could not be loaded. Reload to try again.');
+            return null;
+          }),
         ]);
         if (cancelled) return;
 
-        const normalizedTemplates = savedTemplates.map(template => ({
+        const normalizedTemplates = (savedTemplates || []).map(template => ({
           ...template,
           config: {
             ...template.config,
@@ -281,7 +286,7 @@ const AuthorizedWorkspace: React.FC<{
         const migratedHistory = history.map(normalizeStoredMedia);
 
         setGeneratedMedia(current => mergeLoadedGalleryHistory(current, migratedHistory, historyLoadStartedAt));
-        setTemplates(normalizedTemplates);
+        if (savedTemplates) setTemplates(normalizedTemplates);
         
         // Resume pending/processing videos and recover rows that were marked
         // failed only because the provider status endpoint returned a transient
