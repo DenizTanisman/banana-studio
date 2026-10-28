@@ -3,6 +3,7 @@ import { withoutLegacyMask } from '../lib/references/referenceImages';
 import { normalizePromptPreparation } from '../lib/prompts/promptPreparation';
 import { createTaskDeadline, waitForTask } from '../lib/shared/asyncTask';
 import { GeneratedMedia, Template, Folder, SavedReferenceImage, SavedPerson, SavedPersonSummary, ReferenceVideo, ReferenceAudio, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, VideoModelId, VideoOperation, VideoQuality, estimateVideoCost, normalizeYouTubeSource } from '../types';
+import { isAuthSessionMissingError } from '@supabase/supabase-js';
 import { supabase, getCurrentUserId, SUPABASE_URL } from './authService';
 import { retryTransientRead } from '../lib/shared/transientRead';
 import { signMediaUrl } from '../lib/references/mediaAccess';
@@ -2267,6 +2268,8 @@ export const getTemplates = async (): Promise<Template[]> => {
       }
       return [];
     } catch (e) {
+      // Signed out is "no templates"; any other failure is reported.
+      if (isAuthSessionMissingError(e)) return [];
       throw e instanceof Error ? e : new Error('Templates could not be loaded.');
     }
   }
