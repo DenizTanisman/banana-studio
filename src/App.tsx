@@ -790,7 +790,8 @@ const AuthorizedWorkspace: React.FC<{
       const message = (error as any)?.message || 'Generation failed';
       setGeneratedMedia(prev => prev.map(item =>
         item.id === placeholder.id
-          ? { ...item, isLoading: false, url: '', status: 'failed', error: message, imageProgress: undefined }
+          // Clear the submission stage too: Gallery hides Recover while it reads 'preparing'.
+          ? { ...item, isLoading: false, url: '', status: 'failed', error: message, imageProgress: undefined, imageStage: undefined, imageQueueWaitReason: undefined }
           : item
       ));
       return { ok: false, error: message };
