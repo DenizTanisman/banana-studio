@@ -466,7 +466,9 @@ const AuthorizedWorkspace: React.FC<{
         const renew = (items: GeneratedMedia[]) => items.map(item => {
           const updated = refreshed.get(item.id);
           // Keep in-flight generation progress; renew only existing media links.
-          return updated ? { ...item, url: updated.url, thumbnailUrl: updated.thumbnailUrl } : item;
+          // An empty saved URL (still saving, or read before completion) never blanks a live one.
+          if (!updated?.url) return item;
+          return { ...item, url: updated.url, thumbnailUrl: updated.thumbnailUrl || item.thumbnailUrl };
         });
         if (adminGalleryUser) setAdminGalleryMedia(renew);
         else setGeneratedMedia(renew);
