@@ -311,7 +311,7 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     try {
       const vids = await getTopPerformingVideos(channel.uploadsPlaylistId, 10);
       setVideos(vids);
-      setSelectedIds(new Set(vids.map((v) => v.id)));
+      setSelectedIds(new Set(vids.slice(0, maxSelectable).map((v) => v.id)));
     } catch (err: any) {
       setError(err.message || 'Failed to load videos');
     } finally {
