@@ -24,23 +24,26 @@ export const prepareEditableImagePrompt = (prompt: string, references: Reference
   editable = bindImageReferences(editable, references, referenceTag);
   // In "make this image 9:16", 9 is an aspect ratio, not reference 9.
   // Apply the same boundary to list/range members so they cannot eat a size.
+  // A list may use an Oxford comma ("1, 2, and 3"), "or", or a "through" range.
+  const bindList = (mention: string): string => {
+    let indices = [...mention.matchAll(/\d+/g)].map(match => Number(match[0]));
+    if (/\d\s*(?:to|through|[–-])\s*(?:images?\s*)?\d/i.test(mention) && indices.length === 2) {
+      const [first, last] = indices;
+      if (last < first || last - first > 100) return '@MISSING_IMAGE_0';
+      indices = Array.from({ length: last - first + 1 }, (_, index) => first + index);
+    }
+    const joiner = /\bor\b/i.test(mention) && !/\band\b/i.test(mention) ? ' or ' : ' and ';
+    return [...new Set(indices.map(index => references[index - 1] ? referenceTag(references[index - 1]) : `@MISSING_IMAGE_${index}`))].join(joiner);
+  };
   editable = mapUnquotedPrompt(editable, text => text.replace(
-    /@REFERENCE\[[^\]\n]*\]|\bimages?\s*\d+\b(?![\t ]*[:x×][\t ]*\d)(?:\s*(?:[,/&]|and|to|[–-])\s*(?:images?\s*)?\d+\b(?![\t ]*[:x×][\t ]*\d))*/gi,
+    /@REFERENCE\[[^\]\n]*\]|\bimages?\s*\d+\b(?![\t ]*[:x×][\t ]*\d)(?:\s*(?:,\s*(?:and|or)\b|[,/&]|and|or|to|through|[–-])\s*(?:images?\s*)?\d+\b(?![\t ]*[:x×][\t ]*\d))*/gi,
     (mention: string) => {
       if (mention.startsWith('@REFERENCE[')) return mention;
       // "from image 2 to image 1" names a donor and destination, not a
-      // descending image range. Preserve the connecting word and both roles.
-      if (/\bto\s+images?\s*\d+/i.test(mention)) return mention.replace(/\bimages?\s*(\d+)/gi, (_, number) => {
-        const ref = references[Number(number) - 1];
-        return ref ? referenceTag(ref) : `@MISSING_IMAGE_${number}`;
-      });
-      let indices = [...mention.matchAll(/\d+/g)].map(match => Number(match[0]));
-      if (/\d\s*(?:to|[–-])\s*(?:images?\s*)?\d/i.test(mention) && indices.length === 2) {
-        const [first, last] = indices;
-        if (last < first || last - first > 100) return '@MISSING_IMAGE_0';
-        indices = Array.from({ length: last - first + 1 }, (_, index) => first + index);
-      }
-      return [...new Set(indices.map(index => references[index - 1] ? referenceTag(references[index - 1]) : `@MISSING_IMAGE_${index}`))].join(' and ');
+      // descending image range. Bind each side as its own list ("images 2
+      // and 3 to image 1") and keep the connecting word between them.
+      if (/\bto\s+images?\s*\d+/i.test(mention)) return mention.split(/(\s*\bto\b\s*)/i).map((part, index) => index % 2 ? part : bindList(part)).join('');
+      return bindList(mention);
     },
   ));
   // App-generated counts describe the old snapshot; identity grouping is stable.
