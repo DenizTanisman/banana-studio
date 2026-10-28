@@ -1574,6 +1574,8 @@ const AuthorizedWorkspace: React.FC<{
             toast.warning('Limit Reached', `Maximum of ${MAX_VIDEOS} reference videos allowed for this operation.`);
             return prev;
           }
+          // Confirm only an addition that happened; the limit branch already warned.
+          toast.success('Video Reference Added', 'Video added as reference. Switched to video mode.');
           return {
             ...prev,
             referenceVideos: [
@@ -1589,7 +1591,6 @@ const AuthorizedWorkspace: React.FC<{
             mode: 'video',
           };
         });
-        toast.success('Video Reference Added', 'Video added as reference. Switched to video mode.');
         return;
       }
 
@@ -1609,6 +1610,7 @@ const AuthorizedWorkspace: React.FC<{
               return prev;
             }
 
+            toast.success('Reference Added', 'Image added as reference.');
             return {
               ...prev,
               referenceImages: [
@@ -1621,8 +1623,6 @@ const AuthorizedWorkspace: React.FC<{
               ]
             };
           });
-
-          toast.success('Reference Added', 'Image added as reference.');
         }
       };
       reader.readAsDataURL(blob);
