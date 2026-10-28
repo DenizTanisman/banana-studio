@@ -111,9 +111,11 @@ test('like SQL, a removed generation is never dispatched and a finished job neve
     assert.equal(f.store.workerRpc('claim_image_job',{p_id:'after',p_claim:'c4'}).action,'observe');
     // A failure never downgrades a completed row, even while the job is not terminal yet.
     enqueue('row');f.store.workerRpc('claim_image_job',{p_id:'row',p_claim:'c5'});f.store.workerRpc('dispatch_image_job',{p_id:'row',p_claim:'c5'});
-    f.store.execute({table:'generations',operation:'update',value:{status:'completed'},filters:[{column:'id',operator:'eq',value:'row'}]},false);
+    f.store.execute({table:'generations',operation:'update',value:{status:'completed',storage_path:'u/row.png'},filters:[{column:'id',operator:'eq',value:'row'}]},false);
+    const completed=structuredClone(f.store.get('generations','row'));
     assert.equal(f.store.workerRpc('finish_image_job',{p_id:'row',p_claim:'c5',p_success:false,p_error:'late failure'}),true);
-    assert.equal(f.store.get('generations','row').status,'completed');
+    // The whole row is kept: status, storage path and metadata (no late error).
+    assert.deepEqual(f.store.get('generations','row'),completed);
     // A finished job never changes again.
     assert.equal(f.store.workerRpc('finish_image_job',{p_id:'row',p_claim:'c5',p_success:true}),false);
     assert.equal(f.store.job('row').state,'failed');
