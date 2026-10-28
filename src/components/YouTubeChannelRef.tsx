@@ -107,14 +107,18 @@ export const YouTubeChannelRef: React.FC<YouTubeChannelRefProps> = ({
     maxHeight: 480,
   });
   const [configured, setConfigured] = useState<boolean>(true);
+  const configRequest = useRef(0);
 
+  // A failed check (no session yet, network error) or a key added after launch
+  // must not stick: check again on each open while it reads as not configured.
+  // Opening must not discard the first check, so only a newer check wins.
   useEffect(() => {
-    let cancelled = false;
+    if (configRequest.current && (!isOpen || configured)) return;
+    const request = ++configRequest.current;
     isYouTubeConfigured().then((ok) => {
-      if (!cancelled) setConfigured(ok);
+      if (configRequest.current === request) setConfigured(ok);
     });
-    return () => { cancelled = true; };
-  }, []);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
