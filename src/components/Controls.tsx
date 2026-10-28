@@ -596,6 +596,9 @@ export const Controls: React.FC<ControlsProps> = ({
     : config.mode === 'video' && config.videoModel === 'seedance-2.5'
       ? (seedanceFrameOnly ? 2 : 30)
       : config.mode === 'image' && config.imageModel === SUNBURST_MODEL ? 16 : 14;
+  // Attachments finish after awaits; they use the limits of the latest committed draft.
+  const attachLimitsRef = useRef({ images: maxReferenceImages, audios: maxReferenceAudios, config });
+  useLayoutEffect(() => { attachLimitsRef.current = { images: maxReferenceImages, audios: maxReferenceAudios, config }; });
   const hasStaleEnhancedPrompt = h3PromptSupported && isEnhancedPromptStale(config);
 
   const formatVideoModel = (model?: VideoModelId) => model === 'seedance-2.0'
@@ -724,10 +727,12 @@ export const Controls: React.FC<ControlsProps> = ({
 
       if (newImages.length > 0) {
         // Merge into the latest draft: reading/compressing the files awaited,
-        // and edits or other attachments may have landed meanwhile.
+        // and edits, other attachments or a model change may have landed meanwhile.
+        const latest = attachLimitsRef.current;
+        if (newImages.length > Math.max(0, latest.images - (latest.config.referenceImages || []).length)) setAttachmentError(`Limit reached: ${latest.images} images max.`);
         onChange(prev => {
           const refs = prev.referenceImages || [];
-          return { ...prev, referenceImages: [...refs, ...newImages.slice(0, Math.max(0, MAX_IMAGES - refs.length))] };
+          return { ...prev, referenceImages: [...refs, ...newImages.slice(0, Math.max(0, attachLimitsRef.current.images - refs.length))] };
         });
       }
   };
@@ -819,7 +824,7 @@ export const Controls: React.FC<ControlsProps> = ({
     if (newRefs.length > 0) {
       onChange(prev => ({
         ...prev,
-        referenceAudios: [...(prev.referenceAudios || []), ...newRefs],
+        referenceAudios: [...(prev.referenceAudios || []), ...newRefs].slice(0, Math.max(attachLimitsRef.current.audios, prev.referenceAudios?.length || 0)),
       }));
     }
     if (audioInputRef.current) audioInputRef.current.value = '';
@@ -1403,7 +1408,7 @@ export const Controls: React.FC<ControlsProps> = ({
                     // Images and videos from this same drop were added just before.
                     onChange(prev => ({
                         ...prev,
-                        referenceAudios: [...(prev.referenceAudios || []), ...newRefs],
+                        referenceAudios: [...(prev.referenceAudios || []), ...newRefs].slice(0, Math.max(attachLimitsRef.current.audios, prev.referenceAudios?.length || 0)),
                         mode: 'video',
                     }));
                 }
