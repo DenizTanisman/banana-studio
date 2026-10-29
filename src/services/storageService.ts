@@ -1338,7 +1338,8 @@ export const saveVideo = async (
           uploadedStoragePath = storagePath;
           if (saved.thumbnail_path) {
             uploadedThumbnailPath = saved.thumbnail_path;
-            thumbnailUrl = await createMediaAccessUrl(saved.thumbnail_path) || thumbnailUrl;
+            // The poster is optional: a failed signature must not block the video row.
+            try { thumbnailUrl = await createMediaAccessUrl(saved.thumbnail_path) || thumbnailUrl; } catch { /* Keep the stored path. */ }
           }
         } catch {
           return undefined;
