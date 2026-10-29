@@ -107,6 +107,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
   let providerStatus: number | undefined;
   let providerErrorCode: string | undefined;
   let outcome: 'completed' | 'failed' | 'rejected' = 'rejected';
+  let storedPath: string | undefined;
   // Keep references/settings and the result durable even if the browser closes.
   // An INSERT also makes duplicate submissions with the same ID fail before
   // OpenAI is charged; no upsert may take over another user's generation.
@@ -204,6 +205,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
       console.warn('OpenAI image storage failed', body.id, { ...metadata.storageError as object, bytes: imageBytes.length, elapsedMs: Date.now() - startedAt });
       throw new SavedImageError(`${PROVIDER_LABELS[provider]} generated the image, but saving it failed. Usage has been recorded; retrying generation may incur another charge.`);
     }
+    storedPath = storagePath;
     const url = await signedMediaUrl(db.storage.from('media'), storagePath);
     metadata.generationCompletedAt = Date.now();
     metadata.generationTime = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
@@ -215,6 +217,16 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
     // deployment's response-size limit. No credential is sent to the browser.
     return res.status(200).json({ id: body.id, url, storagePath, referenceImages: safeRefs, metadata });
   } catch (error: any) {
+    if (storedPath) {
+      // The billed image is already stored. A later signing or audit error must
+      // not mark it failed and invite a second paid generation.
+      console.warn('OpenAI image stored; finishing step failed', { id: body.id, auditId: guard.id });
+      outcome = 'completed';
+      metadata.generationCompletedAt ??= Date.now();
+      metadata.generationTime ??= Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      await db.from('generations').update({ status: 'completed', url: '', storage_path: storedPath, metadata }).eq('id', body.id).eq('user_id', user.id);
+      return res.status(200).json({ id: body.id, url: '', storagePath: storedPath, referenceImages: safeRefs, metadata });
+    }
     const message = error?.name === 'TimeoutError'
       ? `${PROVIDER_LABELS[provider]} exceeded the request time limit. It may still have billed this request. Check usage before generating again.`
       : error instanceof SavedImageError ? error.message : provider === 'openai' ? openAIErrorMessage(error?.status, providerErrorCode) : `${PROVIDER_LABELS[provider]} could not finish the image. Check provider usage before submitting again.`;
