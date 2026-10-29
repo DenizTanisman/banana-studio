@@ -105,10 +105,12 @@ export function AuthBoundary({ children }: {
       } catch (error) {
         if (!isCurrent(check)) return;
         // A failed session read is a blip too: keep an open workspace and retry
-        // on the next refresh. First entry still fails closed.
-        if (verified.current && verified.current === identity.current && isTransientReadError(error)) return;
+        // on the next refresh. First entry still fails closed, with a retryable
+        // message instead of "not authorized".
+        const transient = isTransientReadError(error);
+        if (transient && verified.current && verified.current === identity.current) return;
         forgetIdentity();
-        setNotice('unauthorized');
+        setNotice(transient ? 'unavailable' : 'unauthorized');
         setLoading(false);
       } finally {
         if (revision.current === check) checking = false;

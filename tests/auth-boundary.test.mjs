@@ -100,6 +100,14 @@ test('a session read blip before first verification never grants access', async 
   const app = mount(t, ['authorized'], { sessionError: new TypeError('Failed to fetch') });
   await app.flush();
   assert.equal(app.view.type, 'login');
+  assert.equal(app.view.props.notice, 'unavailable');
+  assert.deepEqual(f.checks, []);
+});
+
+test('an unexpected session read error before first verification says not authorized', async t => {
+  const app = mount(t, ['authorized'], { sessionError: new Error('Invalid session') });
+  await app.flush();
+  assert.equal(app.view.type, 'login');
   assert.equal(app.view.props.notice, 'unauthorized');
   assert.deepEqual(f.checks, []);
 });
