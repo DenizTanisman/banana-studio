@@ -20,7 +20,7 @@ import { ImageReferenceSummary } from './ImageReferenceSummary';
 import { ImageEditArea } from './ImageEditArea';
 import { getOpenAIImageOptions, getOpenAIImageSize, getSunburstReferences, getImagePromptContextKey, SUNBURST_MODEL, validateOpenAIImageOptions, validateOpenAIImageSize } from '../lib/images/openaiImage';
 import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { Sparkles, Pencil, X, Wand2, Plus, Minus, Loader2, ImagePlus, ChevronDown, ChevronUp, Check, Ratio, Scan, LayoutTemplate, Save, Trash2, RefreshCw, Eraser, Lightbulb, User, Users, Zap, Image as ImageIcon, Play, FileImage, FolderOpen, GripVertical, Video, Clock, Volume2, Music, Film, DollarSign, SkipForward, Rewind, FastForward, RotateCcw, AlertTriangle } from 'lucide-react';
 import { GenerationConfig, ReferenceImage, ReferenceVideo, ReferenceAudio, Template, BrainstormCategory, SavedReferenceImage, IMAGE_MODEL_OPTIONS, VIDEO_MODEL_OPTIONS, VIDEO_ASPECT_RATIO_OPTIONS, VIDEO_QUALITY_OPTIONS, VIDEO_DURATION_OPTIONS, DEFAULT_VIDEO_MODEL, GenerationMode, VideoModelId, VideoOperation, VideoPromptIntent, VideoAspectRatio, VideoQuality, VideoDuration, estimateVideoCost, getVideoPromptIntent, getPromptEnhancementTarget, isEnhancedPromptStale } from '../types';
 import { enhancePrompt, enhanceVideoPrompt } from '../services/geminiService';
@@ -775,20 +775,25 @@ export const Controls: React.FC<ControlsProps> = ({
           : []
       );
 
-      const latest = attachLimitsRef.current;
+      let dropped = 0;
       if (newRefs.length > 0) {
         // Never exceed the latest limit (the operation may have changed while uploading),
-        // even if another selection finished first.
-        onChange(previous => ({
-          ...previous,
-          referenceVideos: [...(previous.referenceVideos || []), ...newRefs.slice(0, Math.max(0, attachLimitsRef.current.videos - (previous.referenceVideos?.length || 0)))],
-          ...(switchToVideo ? { mode: 'video' as const } : {}),
+        // even if another selection finished first. flushSync applies the update now,
+        // so the warning reflects what it kept.
+        flushSync(() => onChange(previous => {
+          const kept = newRefs.slice(0, Math.max(0, attachLimitsRef.current.videos - (previous.referenceVideos?.length || 0)));
+          dropped = newRefs.length - kept.length;
+          return {
+            ...previous,
+            referenceVideos: [...(previous.referenceVideos || []), ...kept],
+            ...(switchToVideo ? { mode: 'video' as const } : {}),
+          };
         }));
       }
       if (failures.length > 0) {
         setAttachmentError(failures.join('\n'));
       }
-      if (newRefs.length > Math.max(0, latest.videos - (latest.config.referenceVideos?.length || 0))) addAttachmentError(`Limit reached: ${latest.videos} videos max.`);
+      if (dropped) addAttachmentError(`Limit reached: ${attachLimitsRef.current.videos} videos max.`);
     } finally {
       setUploadingReferenceVideos(count => Math.max(0, count - files.length));
     }
