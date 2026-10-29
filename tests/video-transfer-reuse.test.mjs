@@ -10,8 +10,8 @@ const stubs = {
     const from=()=>{const op={op:'select'};const q={select(){return q},upsert(v){op.op='upsert';op.value=v;return q},eq(){return q},maybeSingle(){return q},
       then(ok,fail){globalThis.__ops.push(op);return Promise.resolve(globalThis.__db(op)).then(ok,fail)}};return q;};
     export const supabase={from,auth:{getSession:async()=>({data:{session:{user:{id:'u1'}}}})},storage:{from:()=>({
-      upload:async path=>{(globalThis.__uploads||=[]).push(path);globalThis.__objects.set(path,globalThis.__source);return{error:null};},
-      createSignedUrl:async path=>globalThis.__signFails?.(path)?{data:null,error:{message:'sign failed',statusCode:'500'}}:{data:{signedUrl:'https://x.supabase.co/storage/v1/object/sign/media/'+path},error:null}})}};`,
+      upload:async(path,blob)=>{(globalThis.__uploads||=[]).push(path);globalThis.__objects.set(path,globalThis.__blobSource?await blob.text():globalThis.__source);return{error:null};},
+      createSignedUrl:async path=>(await globalThis.__signGate?.(path),globalThis.__signFails?.(path))?{data:null,error:{message:'sign failed',statusCode:'500'}}:{data:{signedUrl:'https://x.supabase.co/storage/v1/object/sign/media/'+path},error:null}})}};`,
   runtimeConfig: 'export const isLocalWorkspace=()=>false;',
   'tus-js-client': 'export class Upload{}',
 };
@@ -80,4 +80,30 @@ test('a poster that cannot be re-signed on retry does not block the row or lose 
     assert.equal(saved.storage_path, 'u1/v3.mp4');
     assert.equal(saved.thumbnail_path, 'u1/v3_thumb.png');
   } finally { globalThis.__signFails = null; Object.assign(console, { warn, error }); globalThis.fetch = fetchImpl; }
+});
+
+test('saves of one video that overlap do not let a retry reuse a file the other overwrote', async () => {
+  const { warn, error } = console; console.warn = console.error = () => {};
+  const fetchImpl = globalThis.fetch;
+  globalThis.__objects = new Map(); globalThis.__blobSource = true;
+  // Each download's bytes name its source, so the stored file shows which save wrote it last.
+  globalThis.fetch = async url => new Response(String(url), { status: 200, headers: { 'content-type': 'video/mp4' } });
+  let releaseA, gated = false;
+  const signedA = new Promise(resolve => { releaseA = resolve; });
+  globalThis.__signGate = path => { if (path === 'u1/v4.mp4' && !gated) { gated = true; return signedA; } };
+  const save = (url, rowFails) => { globalThis.__db = op => op.op === 'upsert' && rowFails ? { error: { message: 'timeout' } } : { data: null, error: null };
+    return saveVideo({ id: 'v4', url, prompt: 'p', mediaType: 'video', createdAt: 1, videoModel: 'seedance-2.5', referenceImages: [] }); };
+  try {
+    globalThis.__ops = [];
+    const first = save('https://p/A.mp4', true);
+    while (!gated) await new Promise(resolve => setImmediate(resolve));
+    // A has stored its file and waits for its URL; B overwrites the same path meanwhile.
+    await save('https://p/B.mp4', true);
+    assert.equal(globalThis.__objects.get('u1/v4.mp4'), 'https://p/B.mp4');
+    releaseA(); await first;
+    globalThis.__ops = [];
+    await save('https://p/A.mp4', false);
+    assert.ok(globalThis.__ops.find(op => op.op === 'upsert'));
+    assert.equal(globalThis.__objects.get('u1/v4.mp4'), 'https://p/A.mp4');
+  } finally { globalThis.__signGate = null; globalThis.__blobSource = false; Object.assign(console, { warn, error }); globalThis.fetch = fetchImpl; }
 });

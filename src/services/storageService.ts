@@ -1177,6 +1177,8 @@ const mergeVideoMetadata = (existing: Record<string, any>, incoming: Record<stri
 
 // A retry after a failed row save reuses the stored file instead of moving the video again.
 const completedVideoTransfers = new Map<string, { source: string; storagePath: string; thumbnailPath: string | null; pendingThumbnail?: Blob }>();
+// Overlapping transfers of one generation can leave either source in the stored file, so none of them records it.
+const activeVideoTransfers = new Map<string, Set<{ overlapped: boolean }>>();
 
 export const saveVideo = async (
   media: GeneratedMedia,
@@ -1231,6 +1233,10 @@ export const saveVideo = async (
         console.warn('Saved video poster could not be renewed:', thumbnailError?.message || thumbnailError);
       }
     } else if (!videoUrl.startsWith('data:')) {
+      const activeTransfers = activeVideoTransfers.get(transferKey) || new Set<{ overlapped: boolean }>();
+      const transfer = { overlapped: activeTransfers.size > 0 };
+      activeTransfers.forEach(other => { other.overlapped = true; });
+      activeTransfers.add(transfer); activeVideoTransfers.set(transferKey, activeTransfers);
       try {
         const response = await fetch(await refreshMediaAccessUrl(videoUrl, false));
         if (!response.ok) {
@@ -1295,7 +1301,7 @@ export const saveVideo = async (
         }
         publicUrl = storagePublicUrl;
         uploadedStoragePath = storagePath;
-        completedVideoTransfers.set(transferKey, { source: videoUrl, storagePath, thumbnailPath: null, ...(thumbnailBlob ? { pendingThumbnail: thumbnailBlob } : {}) });
+        if (!transfer.overlapped) completedVideoTransfers.set(transferKey, { source: videoUrl, storagePath, thumbnailPath: null, ...(thumbnailBlob ? { pendingThumbnail: thumbnailBlob } : {}) });
 
         if (thumbnailBlob) {
           await assertSameUser();
@@ -1313,7 +1319,7 @@ export const saveVideo = async (
             if (savedThumbnailUrl) {
               thumbnailUrl = savedThumbnailUrl;
               uploadedThumbnailPath = thumbnailPath;
-              completedVideoTransfers.set(transferKey, { source: videoUrl, storagePath, thumbnailPath });
+              if (!transfer.overlapped) completedVideoTransfers.set(transferKey, { source: videoUrl, storagePath, thumbnailPath });
             }
           }
         }
@@ -1321,6 +1327,9 @@ export const saveVideo = async (
         // Never persist the expiring provider URL; the caller retries the copy.
         console.warn("Failed to fetch video for storage upload:", fetchErr.message);
         return undefined;
+      } finally {
+        activeTransfers.delete(transfer);
+        if (!activeTransfers.size) activeVideoTransfers.delete(transferKey);
       }
     }
 
