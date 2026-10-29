@@ -116,3 +116,33 @@ test('an abandoned legacy video with no heartbeat can still be expired', async (
     assert.equal(store.get('generations', id).status, 'failed');
   });
 });
+
+test('heartbeat compare-and-set filters use numeric JSON, not lexicographic text', async () => {
+  await withWorkspace(async ({ store, client, now, id }) => {
+    const filters = [];
+    const inspectingClient = {
+      from(table) {
+        const query = client.from(table);
+        const originalThen = query.then.bind(query);
+        query.then = (resolve, reject) => {
+          filters.push(...query.plan.filters);
+          return originalThen(resolve, reject);
+        };
+        return query;
+      },
+    };
+    assert.equal(await refreshPendingVideoSubmission(inspectingClient, store.user.id, id, now), true);
+    assert.equal(
+      filters.some(f => f.column === 'metadata->submissionHeartbeatAt' && f.operator === 'eq'),
+      true,
+      'renewal should compare the saved JSON number numerically',
+    );
+    filters.length = 0;
+    assert.equal(await failStalePendingVideo(inspectingClient, store.user.id, id, 'Timed out', now + 200_000), true);
+    assert.equal(
+      filters.some(f => f.column === 'metadata->submissionHeartbeatAt' && f.operator === 'lt'),
+      true,
+      'expiration should compare the saved JSON number numerically',
+    );
+  });
+});

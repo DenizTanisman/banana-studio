@@ -27,8 +27,8 @@ export const refreshPendingVideoSubmission = async (
     .eq('type', 'video').eq('status', 'pending').eq('task_id', '');
   // Compare-and-set: a slow renewal cannot rewind a newer heartbeat.
   query = Number.isFinite(previous) && previous > 0
-    ? query.eq('metadata->>submissionHeartbeatAt', previous)
-    : query.is('metadata->>submissionHeartbeatAt', null);
+    ? query.eq('metadata->submissionHeartbeatAt', previous)
+    : query.is('metadata->submissionHeartbeatAt', null);
   const { data, error } = await query.select('id');
   return !error && Array.isArray(data) && data.length === 1;
 };
@@ -61,9 +61,32 @@ export const failStalePendingVideo = async (
   // Compare the persisted lease again at UPDATE time; a concurrent heartbeat
   // or provider transition must win over this stale read.
   query = heartbeat == null
-    ? query.is('metadata->>submissionHeartbeatAt', null)
-    : query.lt('metadata->>submissionHeartbeatAt', leaseCutoff);
+    ? query.is('metadata->submissionHeartbeatAt', null)
+    : query.lt('metadata->submissionHeartbeatAt', leaseCutoff);
   query = current.task_id == null ? query.is('task_id', null) : query.eq('task_id', '');
   const { data, error } = await query.select('id');
   return !error && Array.isArray(data) && data.length === 1;
+};
+
+/** Fire-and-forget recovery must not delay gallery or image-job startup. */
+export const scheduleStaleVideoCheck = (
+  check: () => Promise<boolean>,
+  isCancelled: () => boolean,
+  onFailed: () => void,
+): void => {
+  void check().then(failed => {
+    if (failed && !isCancelled()) onFailed();
+  }).catch(() => {});
+};
+
+/** Avoid repeated reads of an unchanged pending row in a different tab. */
+export const allowPeriodicStaleCheck = (
+  checkedAt: Map<string, number>,
+  id: string,
+  now: number,
+): boolean => {
+  const previous = checkedAt.get(id);
+  if (previous !== undefined && now - previous < 60_000) return false;
+  checkedAt.set(id, now);
+  return true;
 };

@@ -30,7 +30,7 @@ import { validateImageGenerationReferences } from './lib/images/imagePrompting';
 import { prepareProtectedImageSource, finishProtectedImageEdit } from './services/imageEditService';
 import { getGalleryEditSourceId } from './lib/gallery/galleryEditJobs';
 import { isStuckPendingMedia, VIDEO_SUBMISSION_HEARTBEAT_INTERVAL_MS } from './lib/gallery/stuckPending';
-import { refreshPendingVideoSubmission, failStalePendingVideo } from './lib/gallery/videoSubmissionLease';
+import { refreshPendingVideoSubmission, failStalePendingVideo, scheduleStaleVideoCheck, allowPeriodicStaleCheck } from './lib/gallery/videoSubmissionLease';
 import { mergeLoadedGalleryHistory } from './lib/gallery/galleryHistoryMerge';
 import { mergeReconciledGalleryCosts } from './lib/gallery/galleryBillingRefresh';
 import { createPromptPreparation } from './lib/prompts/promptPreparation';
@@ -164,6 +164,7 @@ const AuthorizedWorkspace: React.FC<{
 
   const [generatedMedia, setGeneratedMedia] = useState<GeneratedMedia[]>([]);
   const generatedMediaRef = useRef<GeneratedMedia[]>([]);
+  const lastStaleVideoCheckRef = useRef(new Map<string, number>());
   const checkingStaleVideosRef = useRef(new Set<string>());
   useEffect(() => { generatedMediaRef.current = generatedMedia; }, [generatedMedia]);
   const [imageCostHistory, setImageCostHistory] = useState<{ userId: string; samples: ImageCostSample[] } | null>(null);
@@ -322,13 +323,14 @@ const AuthorizedWorkspace: React.FC<{
             // A pending row may belong to another active tab/device. Only the
             // database's atomic stale-lease check can fail it.
             const message = 'Generation interrupted before task was created';
-            const failed = await failStaleVideoSubmission(pending.id, message, Date.now()).catch(() => false);
-            if (failed) {
-              setGeneratedMedia(prev => prev.map(item =>
+            scheduleStaleVideoCheck(
+              () => failStaleVideoSubmission(pending.id, message, Date.now()),
+              () => cancelled,
+              () => setGeneratedMedia(prev => prev.map(item =>
                 item.id === pending.id && item.status === 'pending'
                   ? { ...item, isLoading: false, status: 'failed', error: message } : item
-              ));
-            }
+              )),
+            );
           }
         }
 
@@ -368,7 +370,8 @@ const AuthorizedWorkspace: React.FC<{
       const errMsg = 'Generation request did not start (timed out before a task ID was returned). You can remove this entry.';
       for (const item of generatedMediaRef.current) {
         if (item.mediaType !== 'video' || !isStuckPendingMedia(item, now)
-          || checkingStaleVideosRef.current.has(item.id)) continue;
+          || checkingStaleVideosRef.current.has(item.id)
+          || !allowPeriodicStaleCheck(lastStaleVideoCheckRef.current, item.id, now)) continue;
         checkingStaleVideosRef.current.add(item.id);
         failStaleVideoSubmission(item.id, errMsg, now)
           .then(failed => {
