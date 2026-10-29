@@ -12,7 +12,7 @@ const withEnv = async (values, run) => {
   try { return await run(); } finally { for (const [key, value] of Object.entries(saved)) value == null ? delete process.env[key] : process.env[key] = value; }
 };
 // A stand-in for the Codex CLI: records its arguments and stdin, then saves one image like `codex exec --json`.
-const fakeCodex = (directory, { fail } = {}) => {
+const fakeCodex = (directory, { fail, retry } = {}) => {
   const file = path.join(directory, 'codex');
   fs.writeFileSync(file, `#!${process.execPath}
 const fs=require('node:fs'),path=require('node:path');let input='';
@@ -21,6 +21,7 @@ process.stdin.on('data',c=>input+=c).on('end',()=>{
   for(let i=0;i<process.argv.length;i++)if(process.argv[i]==='--image')images.push(fs.readFileSync(process.argv[i+1]).toString('base64'));
   fs.writeFileSync(path.join(home,'call.json'),JSON.stringify({args:process.argv.slice(2),input,images,secrets:['OPENAI_API_KEY','FAL_KEY','SUPABASE_SERVICE_ROLE_KEY'].filter(k=>k in process.env)}));
   console.log(JSON.stringify({type:'thread.started',thread_id:thread}));
+  ${retry ? `console.log(JSON.stringify({type:'error',message:'Reconnecting... 1/5 (stream disconnected before completion)'}));` : ''}
   ${fail ? `console.log(JSON.stringify({type:'turn.failed',error:{message:'You have hit your usage limit.'}}));process.exit(1);` : `
   fs.mkdirSync(path.join(home,'generated_images',thread),{recursive:true});
   fs.writeFileSync(path.join(home,'generated_images',thread,'out.png'),Buffer.from('${PNG.toString('base64')}','base64'));
@@ -107,5 +108,19 @@ test('Codex failures surface the CLI message instead of a generic error', { skip
     const response = await withEnv({ CODEX_HOME: home, CODEX_BIN: binary }, () => requestCodexImage({ prompt: 'x' }, async value => value));
     assert.equal(response.status, 401);
     assert.match((await response.json()).error.message, /codex login/);
+  } finally { fs.rmSync(home, { recursive: true, force: true }); }
+});
+
+test('a stream error that Codex retries does not fail an image it then completes', { skip: process.platform === 'win32' }, async () => {
+  const home = workspace();
+  try {
+    const binary = fakeCodex(home, { retry: true });
+    const response = await withEnv({ CODEX_HOME: home, CODEX_BIN: binary }, () => requestCodexImage({ prompt: 'x' }, async value => value));
+    assert.equal(response.status, 200);
+    assert.deepEqual(Buffer.from((await response.json()).data[0].b64_json, 'base64'), PNG);
+    // A retry that ends in a failed turn still reports that turn's error.
+    const failing = fakeCodex(home, { retry: true, fail: true });
+    await withEnv({ CODEX_HOME: home, CODEX_BIN: failing }, () =>
+      assert.rejects(requestCodexImage({ prompt: 'x' }, async value => value), /usage limit/));
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
