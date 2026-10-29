@@ -85,7 +85,7 @@ export const codexArguments = (imagePaths: string[], workingDirectory: string): 
 const runCodex = (binary: string, args: string[], prompt: string, signal?: AbortSignal) => new Promise<{ threadId: string; message: string }>((resolve, reject) => {
   // The prompt goes through stdin, never through a shell or the argument list.
   const child = spawn(binary, args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: codexEnvironment(binary) });
-  let threadId = '', message = '', failure = '', buffer = '', stderr = '';
+  let threadId = '', message = '', failure = '', lastError = '', buffer = '', stderr = '';
   const stop = (error: Error) => { child.kill('SIGTERM'); reject(error); };
   const timer = setTimeout(() => stop(Object.assign(new Error('Codex did not finish the image in time.'), { name: 'TimeoutError' })), TIMEOUT_MS);
   const abort = () => stop(Object.assign(new Error('The image request was cancelled.'), { name: 'AbortError' }));
@@ -99,7 +99,9 @@ const runCodex = (binary: string, args: string[], prompt: string, signal?: Abort
         const event = JSON.parse(line);
         if (event.type === 'thread.started' && typeof event.thread_id === 'string') threadId = event.thread_id;
         if (event.type === 'item.completed' && event.item?.type === 'agent_message' && event.item.text) message = String(event.item.text);
-        if (event.type === 'turn.failed' || event.type === 'error') failure = String(event.error?.message || event.message || 'Codex reported an error.');
+        if (event.type === 'turn.failed') failure = String(event.error?.message || 'Codex reported an error.');
+        // Codex also reports stream errors it retries ("Reconnecting... 1/5") as `error`; only a failed turn or exit ends the run.
+        if (event.type === 'error') lastError = String(event.message || 'Codex reported an error.');
       } catch { /* Ignore non-JSON progress lines. */ }
     }
   });
@@ -108,7 +110,7 @@ const runCodex = (binary: string, args: string[], prompt: string, signal?: Abort
   child.on('close', code => {
     clearTimeout(timer); signal?.removeEventListener('abort', abort);
     if (failure) return reject(new Error(failure));
-    if (code !== 0) return reject(new Error(`Codex exited with code ${code}. ${stderr.trim().split('\n').at(-1) || ''}`.trim()));
+    if (code !== 0) return reject(new Error(lastError || `Codex exited with code ${code}. ${stderr.trim().split('\n').at(-1) || ''}`.trim()));
     if (!/^[a-zA-Z0-9-]{1,128}$/.test(threadId)) return reject(new Error('Codex did not report a session.'));
     resolve({ threadId, message });
   });
