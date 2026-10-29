@@ -92,7 +92,8 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
       if (!isValidEditRegion(editReference.editRegion)) return res.status(400).json({ error: EDIT_REGION_REQUIRED });
       protectedSource = await readEditSource(db, editReference.data, user.id);
       size = `${protectedSource.info.width}x${protectedSource.info.height}`;
-      const sourceSizeError = body.model === SUNBURST_MODEL ? validateOpenAIImageSize(size) : null;
+      // OpenAI's size rules apply to API routes; Codex picks its own canvas and is resized to the source at the same ratio.
+      const sourceSizeError = body.model === SUNBURST_MODEL && provider !== 'codex' ? validateOpenAIImageSize(size) : null;
       if (sourceSizeError) return res.status(400).json({ error: `Protected edits use the source canvas (${size}). ${sourceSizeError}` });
       generationPrompt += '\n\n' + describeEditRegion(editReference.editRegion, protectedSource.info.width, protectedSource.info.height);
     } else if (safeRefs.some(ref => ref.editRegion)) {
