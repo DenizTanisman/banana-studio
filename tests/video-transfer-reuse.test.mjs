@@ -96,7 +96,10 @@ test('saves of one video that overlap do not let a retry reuse a file the other 
   try {
     globalThis.__ops = [];
     const first = save('https://p/A.mp4', true);
-    while (!gated) await new Promise(resolve => setImmediate(resolve));
+    let firstSettled = false;
+    first.then(() => { firstSettled = true; }, () => { firstSettled = true; });
+    while (!gated && !firstSettled) await new Promise(resolve => setImmediate(resolve));
+    assert.ok(gated, 'A finished before it reached the URL signing gate');
     // A has stored its file and waits for its URL; B overwrites the same path meanwhile.
     await save('https://p/B.mp4', true);
     assert.equal(globalThis.__objects.get('u1/v4.mp4'), 'https://p/B.mp4');
