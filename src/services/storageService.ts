@@ -715,6 +715,10 @@ const mapRowToMedia = (row: any): GeneratedMedia => {
     generationTime: timestampGenerationTime ?? meta.generationTime,
     generationStartedAt,
     generationCompletedAt,
+    submissionHeartbeatAt: isVideo && typeof meta.submissionHeartbeatAt === 'number'
+      && Number.isFinite(meta.submissionHeartbeatAt) && meta.submissionHeartbeatAt > 0
+      ? meta.submissionHeartbeatAt
+      : undefined,
     referenceVideos,
     referenceAudios: sanitizePublicMediaRefs(meta.referenceAudios as ReferenceAudio[])
       .map(ref => ({ ...ref, url: resolveMediaReference(ref.url) || '' })),
@@ -1530,6 +1534,7 @@ export const createPendingVideo = async (
         promptPreparation: normalizePromptPreparation(config.promptPreparation),
         generationCost: config.generationCost,
         generationStartedAt: config.generationStartedAt,
+        submissionHeartbeatAt: Date.now(),
         referenceVideos: sanitizePublicMediaRefs(config.referenceVideos).map(ref => ({ ...ref, url: persistMediaReference(ref.url) })),
         referenceAudios: sanitizePublicMediaRefs(config.referenceAudios).map(ref => ({ ...ref, url: persistMediaReference(ref.url) })),
       },
