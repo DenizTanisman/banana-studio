@@ -9,23 +9,26 @@ const audio = src.slice(src.indexOf('  const processAudioFiles = async'), src.in
 const pif = src.slice(src.indexOf('  const processImageFiles = async'), src.indexOf('  // --- Upload Handlers ---'));
 const ds = src.indexOf('    // 1. Handle Desktop Files', src.indexOf('  const handleDrop = async'));
 const drop = src.slice(ds, src.indexOf('    // 2. Handle Gallery Drops', ds));
-const code = transformSync(`module.exports = env => { let { config, onChange, setAttachmentError, maxReferenceImages, maxReferenceVideos, maxReferenceAudios, isH3VideoConfig, readFileAsBase64, getMimeType, estimateBase64Size, compressImage, processVideoFiles, readAudioDuration, URL, audioInputRef, attachLimitsRef, uploadingReferenceVideos, addAttachmentError } = env;
+const code = transformSync(`module.exports = env => { let { config, onChange, setAttachmentError, maxReferenceImages, maxReferenceVideos, maxReferenceAudios, isH3VideoConfig, readFileAsBase64, getMimeType, estimateBase64Size, compressImage, processVideoFiles, readAudioDuration, URL, audioInputRef, attachLimitsRef, uploadingReferenceVideos, addAttachmentError, flushSync } = env;
   ${audio}
   ${pif}
   return { processImageFiles, handleAudioFileUpload, drop: async e => { ${drop} } }; };`, { loader: 'ts', format: 'cjs' }).code;
-const setup = (start, gate, max = 14, failRead) => {
+const setup = (start, gate, max = 14, failRead, queued) => {
   let state = start;
+  // queued: updates wait for a render, as React batches them; flushSync applies them now.
+  const pending = [];
+  const render = () => { while (pending.length) state = pending.shift()(state); };
   // What a re-render publishes after commit; tests change it to simulate a model switch.
   const limits = { images: max, audios: 3 };
   const errors = [];
-  const env = { config: start, onChange: v => { state = typeof v === 'function' ? v(state) : v; }, setAttachmentError: e => errors.push(e),
+  const env = { config: start, onChange: v => { const update = typeof v === 'function' ? v : () => v; if (queued) pending.push(update); else state = update(state); }, setAttachmentError: e => errors.push(e), flushSync: fn => { fn(); render(); },
     maxReferenceImages: max, maxReferenceVideos: 3, maxReferenceAudios: 3, isH3VideoConfig: false,
     readFileAsBase64: async f => { if (gate) await gate; if (failRead?.(f)) throw new Error('read failed'); return 'data:' + f.name; }, getMimeType: f => f.type, estimateBase64Size: () => 10, compressImage: async d => d,
     processVideoFiles: async files => { env.onChange(prev => ({ ...prev, referenceVideos: [...(prev.referenceVideos || []), ...files.map(f => ({ id: f.name }))], mode: 'video' })); },
     readAudioDuration: async () => { if (gate) await gate; return 3; }, audioInputRef: { current: null }, uploadingReferenceVideos: 0, addAttachmentError: e => errors.push(e), URL: { createObjectURL: f => 'blob:' + f.name },
     attachLimitsRef: { get current() { return { ...limits, config: state }; } } };
   const mod = { exports: {} }; new Function('module', code)(mod);
-  return { api: mod.exports(env), env, limits, errors, get: () => state };
+  return { api: mod.exports(env), env, limits, errors, render, get: () => state };
 };
 
 const base = { prompt: 'old', mode: 'image', referenceImages: [], referenceVideos: [], referenceAudios: [] };
@@ -81,6 +84,21 @@ test('a model change while audio durations are read applies the new, lower audio
   const pending = t.api.handleAudioFileUpload({ target: { files: ['a.mp3', 'b.mp3', 'c.mp3'].map(n => file(n, 'audio/mpeg')) } });
   t.limits.audios = 1; g.release(); await pending;
   assert.deepEqual(t.get().referenceAudios.map(a => a.name), ['a.mp3']);
+});
+test('reads that finish before a render warn when their queued update hits the limit', async () => {
+  const g = gated(); const t = setup({ ...base, referenceImages: Array.from({ length: 13 }, (_, i) => ({ id: 'r' + i })) }, g.gate, 14, undefined, true);
+  const both = [t.api.processImageFiles([file('a.png', 'image/png')]), t.api.processImageFiles([file('b.png', 'image/png')])];
+  g.release(); await Promise.all(both); t.render();
+  assert.equal(t.get().referenceImages.length, 14);
+  assert.ok(t.errors.includes('Limit reached: 14 images max.'));
+});
+test('overlapping audio uploads warn about the clip their queued update cut', async () => {
+  const g = gated(); const t = setup({ ...base, referenceAudios: [{ id: 'x' }, { id: 'y' }] }, g.gate, 14, undefined, true);
+  const upload = name => t.api.handleAudioFileUpload({ target: { files: [file(name, 'audio/mpeg')] } });
+  const both = [upload('a.mp3'), upload('b.mp3')];
+  g.release(); await Promise.all(both); t.render();
+  assert.equal(t.get().referenceAudios.length, 3);
+  assert.ok(t.errors.includes('Limit reached: 3 audio clips max.'));
 });
 test('a failed read leaves the draft unchanged and a retry adds the image exactly once', async () => {
   let fail = true; const t = setup(base, null, 14, () => fail);

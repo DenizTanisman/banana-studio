@@ -20,7 +20,7 @@ import { ImageReferenceSummary } from './ImageReferenceSummary';
 import { ImageEditArea } from './ImageEditArea';
 import { getOpenAIImageOptions, getOpenAIImageSize, getSunburstReferences, getImagePromptContextKey, SUNBURST_MODEL, validateOpenAIImageOptions, validateOpenAIImageSize } from '../lib/images/openaiImage';
 import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { Sparkles, Pencil, X, Wand2, Plus, Minus, Loader2, ImagePlus, ChevronDown, ChevronUp, Check, Ratio, Scan, LayoutTemplate, Save, Trash2, RefreshCw, Eraser, Lightbulb, User, Users, Zap, Image as ImageIcon, Play, FileImage, FolderOpen, GripVertical, Video, Clock, Volume2, Music, Film, DollarSign, SkipForward, Rewind, FastForward, RotateCcw, AlertTriangle } from 'lucide-react';
 import { GenerationConfig, ReferenceImage, ReferenceVideo, ReferenceAudio, Template, BrainstormCategory, SavedReferenceImage, IMAGE_MODEL_OPTIONS, VIDEO_MODEL_OPTIONS, VIDEO_ASPECT_RATIO_OPTIONS, VIDEO_QUALITY_OPTIONS, VIDEO_DURATION_OPTIONS, DEFAULT_VIDEO_MODEL, GenerationMode, VideoModelId, VideoOperation, VideoPromptIntent, VideoAspectRatio, VideoQuality, VideoDuration, estimateVideoCost, getVideoPromptIntent, getPromptEnhancementTarget, isEnhancedPromptStale } from '../types';
 import { enhancePrompt, enhanceVideoPrompt } from '../services/geminiService';
@@ -736,12 +736,15 @@ export const Controls: React.FC<ControlsProps> = ({
       if (newImages.length > 0) {
         // Merge into the latest draft: reading/compressing the files awaited,
         // and edits, other attachments or a model change may have landed meanwhile.
-        const latest = attachLimitsRef.current;
-        if (newImages.length > Math.max(0, latest.images - (latest.config.referenceImages || []).length)) setAttachmentError(`Limit reached: ${latest.images} images max.`);
-        onChange(prev => {
+        // flushSync applies the update now, so the warning reflects what it kept.
+        let dropped = 0;
+        flushSync(() => onChange(prev => {
           const refs = prev.referenceImages || [];
-          return { ...prev, referenceImages: [...refs, ...newImages.slice(0, Math.max(0, attachLimitsRef.current.images - refs.length))] };
-        });
+          const kept = newImages.slice(0, Math.max(0, attachLimitsRef.current.images - refs.length));
+          dropped = newImages.length - kept.length;
+          return { ...prev, referenceImages: [...refs, ...kept] };
+        }));
+        if (dropped) setAttachmentError(`Limit reached: ${attachLimitsRef.current.images} images max.`);
       }
   };
 
@@ -837,14 +840,19 @@ export const Controls: React.FC<ControlsProps> = ({
       };
     }));
     // Reading durations can take seconds; merge into the latest draft and its latest limit.
-    onChange(previous => {
+    let dropped = 0;
+    flushSync(() => onChange(previous => {
       const audios = previous.referenceAudios || [];
+      const kept = newRefs.slice(0, Math.max(0, attachLimitsRef.current.audios - audios.length));
+      dropped = newRefs.length - kept.length;
       return {
         ...previous,
-        referenceAudios: [...audios, ...newRefs.slice(0, Math.max(0, attachLimitsRef.current.audios - audios.length))],
+        referenceAudios: [...audios, ...kept],
         ...(switchToVideo ? { mode: 'video' as const } : {}),
       };
-    });
+    }));
+    // Files over the limit before reading were already reported.
+    if (dropped && toAdd.length === files.length) addAttachmentError(`Limit reached: ${attachLimitsRef.current.audios} audio clips max.`);
   };
 
   const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
