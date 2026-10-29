@@ -144,7 +144,7 @@ export async function executeOpenAIImage(req:VercelRequest,res:VercelResponse,co
 
     if (context.dispatch && !await context.dispatch(metadata)) {
       await guard.finish('rejected');
-      return res.status(409).json({ error:'The saved worker claim is no longer active. No provider request was sent.' });
+      return res.status(409).json({ code:'IMAGE_CLAIM_LOST', error:'The saved worker claim is no longer active. No provider request was sent.' });
     }
     outcome = 'failed';
     const response = await requestImage(provider, body.model, input, db, key, guard.id);
