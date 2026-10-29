@@ -1,3 +1,5 @@
+> **Source:** This repository is a fork of [orkunisitmak/banana-studio](https://github.com/orkunisitmak/banana-studio) by Orkun Işıtmak and Banana Studio contributors. It is distributed under the original MIT [LICENSE](LICENSE). All credit for the original work belongs to the upstream authors.
+
 <p align="center">
   <img src="docs/assets/brand.svg" width="680" alt="Banana Studio — images, edits, thumbnails and video" />
 </p>
