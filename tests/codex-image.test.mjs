@@ -21,9 +21,10 @@ process.stdin.on('data',c=>input+=c).on('end',()=>{
   for(let i=0;i<process.argv.length;i++)if(process.argv[i]==='--image')images.push(fs.readFileSync(process.argv[i+1]).toString('base64'));
   fs.writeFileSync(path.join(home,'call.json'),JSON.stringify({args:process.argv.slice(2),input,images,secrets:['OPENAI_API_KEY','FAL_KEY','SUPABASE_SERVICE_ROLE_KEY'].filter(k=>k in process.env)}));
   console.log(JSON.stringify({type:'thread.started',thread_id:thread}));
+  // exitCode instead of exit(): exiting at once can drop stdout that has not reached the pipe.
   ${retry ? `console.log(JSON.stringify({type:'error',message:'Reconnecting... 1/5 (stream disconnected before completion)'}));` : ''}
-  ${fatal ? `console.log(JSON.stringify({type:'error',message:'Not signed in'}));process.exit(1);` : ''}
-  ${fail ? `console.log(JSON.stringify({type:'turn.failed',error:{message:'You have hit your usage limit.'}}));process.exit(1);` : `
+  ${fatal ? `console.log(JSON.stringify({type:'error',message:'Not signed in'}));process.exitCode=1;return;` : ''}
+  ${fail ? `console.log(JSON.stringify({type:'turn.failed',error:{message:'You have hit your usage limit.'}}));process.exitCode=1;return;` : `
   fs.mkdirSync(path.join(home,'generated_images',thread),{recursive:true});
   fs.writeFileSync(path.join(home,'generated_images',thread,'out.png'),Buffer.from('${PNG.toString('base64')}','base64'));
   console.log(JSON.stringify({type:'item.completed',item:{type:'agent_message',text:'Done.'}}));`}
